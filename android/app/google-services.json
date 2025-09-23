@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "207300010397",
+    "project_id": "entredos-46d91",
+    "storage_bucket": "entredos-46d91.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:207300010397:android:3df028fd40c2ac72294f74",
+        "android_client_info": {
+          "package_name": "com.example.entredos"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "207300010397-l8t7a7saffrpcqtf99dpbgeeelndcjv9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.entredos",
+            "certificate_hash": "f7bfc9c5316183ddf63ae2dc8bb901c2884e188e"
+          }
+        },
+        {
+          "client_id": "207300010397-stksjafei2pkglmom0phlarrughu7qi7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCe-4a-6F-HZntCai1vobqE6HRVTqScNyE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "207300010397-f0bi7bne2edhkvfr518nr52c2q1g6t76.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "207300010397-5e3uva8punoamt645ngoliqcbg0i7qke.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.entredos"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
