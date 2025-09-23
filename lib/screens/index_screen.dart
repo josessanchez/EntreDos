@@ -1,16 +1,191 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:entredos/widgets/pagos/vista_pagos.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 
+import 'academico_screen.dart';
+import 'calendario_screen.dart';
 import 'document_list_screen.dart';
 import 'hijos_screen.dart';
-import 'calendario_screen.dart';
-import 'academico_screen.dart';
-import 'package:entredos/widgets/pagos/vista_pagos.dart';
+
+class DashboardButton extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final String description;
+  final Color color;
+  final VoidCallback onPressed;
+  final bool highlight;
+
+  const DashboardButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.description,
+    required this.color,
+    required this.onPressed,
+    this.highlight = false,
+  });
+
+  @override
+  _DashboardButtonState createState() => _DashboardButtonState();
+}
 
 class IndexScreen extends StatefulWidget {
+  const IndexScreen({super.key});
+
   @override
   _IndexScreenState createState() => _IndexScreenState();
+}
+
+class _DashboardButtonState extends State<DashboardButton>
+    with SingleTickerProviderStateMixin {
+  bool expanded = false;
+  late AnimationController _controller;
+  late Animation<Color?> _backgroundAnimation;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _backgroundAnimation,
+      builder: (context, child) {
+        return Container(
+          width: MediaQuery.of(context).size.width / 2 - 26,
+          margin: EdgeInsets.only(
+            bottom: 16,
+          ), // espacio inferior para evitar solapamiento
+          padding: widget.highlight ? EdgeInsets.all(2) : EdgeInsets.zero,
+          decoration: widget.highlight
+              ? BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF3A86FF), Color(0xFFFF5E9D)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                )
+              : null,
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            decoration: BoxDecoration(
+              color: widget.highlight
+                  ? _backgroundAnimation.value ?? Color(0xFF1B263B)
+                  : Color(0xFF1B263B),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.color.withOpacity(0.15),
+                  blurRadius: 6,
+                  offset: Offset(0, 3),
+                ),
+              ],
+            ),
+            child: child,
+          ),
+        );
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: widget.onPressed,
+            child: Stack(
+              children: [
+                Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        SizedBox(width: 1), // para alinear el icono centrado
+                        Icon(widget.icon, size: 38, color: widget.color),
+                        GestureDetector(
+                          onTap: toggleExpanded,
+                          child: Icon(
+                            expanded
+                                ? Icons.keyboard_arrow_up
+                                : Icons.keyboard_arrow_down,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      widget.label,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Montserrat',
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          AnimatedSize(
+            duration: Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            child: expanded
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      widget.description,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontFamily: 'Montserrat',
+                        color: Colors.white70,
+                      ),
+                    ),
+                  )
+                : SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void didUpdateWidget(DashboardButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.highlight && !_controller.isAnimating) {
+      _controller.repeat(reverse: true);
+    } else if (!widget.highlight && _controller.isAnimating) {
+      _controller.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 700),
+    );
+
+    _backgroundAnimation = ColorTween(
+      begin: Colors.blue[200],
+      end: Colors.white,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
+    if (widget.highlight) {
+      _controller.repeat(reverse: true);
+    }
+  }
+
+  void toggleExpanded() {
+    setState(() => expanded = !expanded);
+  }
 }
 
 class _IndexScreenState extends State<IndexScreen> {
@@ -18,62 +193,6 @@ class _IndexScreenState extends State<IndexScreen> {
   String? hijoIdSeleccionado;
   String? hijoNombreSeleccionado;
   bool cargando = true;
-
-  @override
-  void initState() {
-    super.initState();
-    cargarHijos();
-  }
-
-  Future<void> cargarHijos() async {
-    final usuarioID = FirebaseAuth.instance.currentUser?.uid;
-    if (usuarioID == null) {
-      setState(() => cargando = false);
-      return;
-    }
-
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('hijos')
-          .where('progenitores', arrayContains: usuarioID)
-          .get();
-
-      final lista = snapshot.docs.map((doc) {
-        final nombre = doc['nombre']?.toString() ?? 'Sin nombre';
-        final fotoUrl = doc['fotoUrl']?.toString() ?? '';
-        return {'id': doc.id, 'nombre': nombre, 'fotoUrl': fotoUrl};
-      }).toList();
-
-      if (hijoIdSeleccionado != null &&
-          !lista.any((h) => h['id'] == hijoIdSeleccionado)) {
-        hijoIdSeleccionado = lista.isNotEmpty ? lista.first['id'] : null;
-        hijoNombreSeleccionado = lista.isNotEmpty
-            ? lista.first['nombre']
-            : null;
-      }
-
-      if (hijoIdSeleccionado == null && lista.isNotEmpty) {
-        hijoIdSeleccionado = lista.first['id'];
-        hijoNombreSeleccionado = lista.first['nombre'];
-      }
-
-      setState(() {
-        hijos = lista;
-        cargando = false;
-      });
-    } catch (e) {
-      print('⚠️ Error al cargar hijos: $e');
-      setState(() => cargando = false);
-    }
-  }
-
-  void mostrarMensajeSeleccion(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('❗ Añade un hijo antes de acceder a esta sección'),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -266,7 +385,7 @@ class _IndexScreenState extends State<IndexScreen> {
                                     ],
                                   ),
                                 );
-                              }).toList(),
+                              }),
                               GestureDetector(
                                 onTap: () async {
                                   await Navigator.push(
@@ -402,8 +521,10 @@ class _IndexScreenState extends State<IndexScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  AcademicoScreen(hijoID: hijoIdSeleccionado!),
+                              builder: (_) => AcademicoScreen(
+                                hijoID: hijoIdSeleccionado!,
+                                nombreHijo: hijoNombreSeleccionado!,
+                              ),
                             ),
                           );
                         },
@@ -430,175 +551,59 @@ class _IndexScreenState extends State<IndexScreen> {
             ),
     );
   }
-}
 
-class DashboardButton extends StatefulWidget {
-  final IconData icon;
-  final String label;
-  final String description;
-  final Color color;
-  final VoidCallback onPressed;
-  final bool highlight;
+  Future<void> cargarHijos() async {
+    final usuarioID = FirebaseAuth.instance.currentUser?.uid;
+    if (usuarioID == null) {
+      setState(() => cargando = false);
+      return;
+    }
 
-  const DashboardButton({
-    required this.icon,
-    required this.label,
-    required this.description,
-    required this.color,
-    required this.onPressed,
-    this.highlight = false,
-  });
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('hijos')
+          .where('progenitores', arrayContains: usuarioID)
+          .get();
 
-  @override
-  _DashboardButtonState createState() => _DashboardButtonState();
-}
+      final lista = snapshot.docs.map((doc) {
+        final nombre = doc['nombre']?.toString() ?? 'Sin nombre';
+        final fotoUrl = doc['fotoUrl']?.toString() ?? '';
+        return {'id': doc.id, 'nombre': nombre, 'fotoUrl': fotoUrl};
+      }).toList();
 
-class _DashboardButtonState extends State<DashboardButton>
-    with SingleTickerProviderStateMixin {
-  bool expanded = false;
-  late AnimationController _controller;
-  late Animation<Color?> _backgroundAnimation;
+      if (hijoIdSeleccionado != null &&
+          !lista.any((h) => h['id'] == hijoIdSeleccionado)) {
+        hijoIdSeleccionado = lista.isNotEmpty ? lista.first['id'] : null;
+        hijoNombreSeleccionado = lista.isNotEmpty
+            ? lista.first['nombre']
+            : null;
+      }
+
+      if (hijoIdSeleccionado == null && lista.isNotEmpty) {
+        hijoIdSeleccionado = lista.first['id'];
+        hijoNombreSeleccionado = lista.first['nombre'];
+      }
+
+      setState(() {
+        hijos = lista;
+        cargando = false;
+      });
+    } catch (e) {
+      print('⚠️ Error al cargar hijos: $e');
+      setState(() => cargando = false);
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 700),
-    );
-
-    _backgroundAnimation = ColorTween(
-      begin: Colors.blue[200],
-      end: Colors.white,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-
-    if (widget.highlight) {
-      _controller.repeat(reverse: true);
-    }
+    cargarHijos();
   }
 
-  @override
-  void didUpdateWidget(DashboardButton oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.highlight && !_controller.isAnimating) {
-      _controller.repeat(reverse: true);
-    } else if (!widget.highlight && _controller.isAnimating) {
-      _controller.stop();
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void toggleExpanded() {
-    setState(() => expanded = !expanded);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _backgroundAnimation,
-      builder: (context, child) {
-        return Container(
-          width: MediaQuery.of(context).size.width / 2 - 26,
-          margin: EdgeInsets.only(
-            bottom: 16,
-          ), // espacio inferior para evitar solapamiento
-          padding: widget.highlight ? EdgeInsets.all(2) : EdgeInsets.zero,
-          decoration: widget.highlight
-              ? BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF3A86FF), Color(0xFFFF5E9D)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                )
-              : null,
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-            decoration: BoxDecoration(
-              color: widget.highlight
-                  ? _backgroundAnimation.value ?? Color(0xFF1B263B)
-                  : Color(0xFF1B263B),
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: widget.color.withOpacity(0.15),
-                  blurRadius: 6,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: child,
-          ),
-        );
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(10),
-            onTap: widget.onPressed,
-            child: Stack(
-              children: [
-                Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        SizedBox(width: 1), // para alinear el icono centrado
-                        Icon(widget.icon, size: 38, color: widget.color),
-                        GestureDetector(
-                          onTap: toggleExpanded,
-                          child: Icon(
-                            expanded
-                                ? Icons.keyboard_arrow_up
-                                : Icons.keyboard_arrow_down,
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 10),
-                    Text(
-                      widget.label,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Montserrat',
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          AnimatedSize(
-            duration: Duration(milliseconds: 250),
-            curve: Curves.easeInOut,
-            child: expanded
-                ? Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      widget.description,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontFamily: 'Montserrat',
-                        color: Colors.white70,
-                      ),
-                    ),
-                  )
-                : SizedBox.shrink(),
-          ),
-        ],
+  void mostrarMensajeSeleccion(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('❗ Añade un hijo antes de acceder a esta sección'),
       ),
     );
   }
