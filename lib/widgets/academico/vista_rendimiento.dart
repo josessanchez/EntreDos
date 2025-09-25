@@ -23,6 +23,7 @@ class _VistaRendimientoState extends State<VistaRendimiento>
   List<Map<String, dynamic>> rendimiento = [];
   List<NotaAcademica> notasGraficables = [];
   Map<String, List<NotaAcademica>> notasPorAsignatura = {};
+  Map<String, List<NotaAcademica>> notasBoletinPorAsignatura = {};
   bool cargando = true;
   late TabController tabController;
 
@@ -414,12 +415,27 @@ class _VistaRendimientoState extends State<VistaRendimiento>
                         ),
                       ),
                     if (asignaturaSeleccionada.isNotEmpty &&
+                        notasBoletinPorAsignatura.containsKey(
+                          asignaturaSeleccionada,
+                        ))
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'Nota final del boletín: ${notasBoletinPorAsignatura[asignaturaSeleccionada]!.last.valor.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    if (asignaturaSeleccionada.isNotEmpty &&
                         notasPorAsignatura.containsKey(asignaturaSeleccionada))
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            const SizedBox(height: 8),
                             const Text(
                               'Resumen de la asignatura',
                               style: TextStyle(
@@ -517,6 +533,7 @@ class _VistaRendimientoState extends State<VistaRendimiento>
 
     final notas = <NotaAcademica>[];
     final asignaturas = <String, List<NotaAcademica>>{};
+    final boletines = <String, List<NotaAcademica>>{};
 
     for (var doc in resultado) {
       final fecha = DateTime.tryParse(doc['fecha'] ?? '') ?? DateTime.now();
@@ -549,11 +566,10 @@ class _VistaRendimientoState extends State<VistaRendimiento>
               valor: valor,
               trimestre: doc['trimestre'],
             );
-            notas.add(nota);
 
             final asignatura =
                 entrada['asignatura']?.toString() ?? 'Sin asignatura';
-            asignaturas.putIfAbsent(asignatura, () => []).add(nota);
+            boletines.putIfAbsent(asignatura, () => []).add(nota);
           }
         }
       }
@@ -565,9 +581,9 @@ class _VistaRendimientoState extends State<VistaRendimiento>
       rendimiento = resultado;
       notasGraficables = notas;
       notasPorAsignatura = asignaturas;
+      notasBoletinPorAsignatura = boletines;
       cargando = false;
 
-      // ✅ Inicializar asignaturaSeleccionada si hay asignaturas disponibles
       if (asignaturas.isNotEmpty) {
         asignaturaSeleccionada = asignaturas.keys.first;
       }
