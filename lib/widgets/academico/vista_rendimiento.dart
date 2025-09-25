@@ -521,7 +521,7 @@ class _VistaRendimientoState extends State<VistaRendimiento>
     for (var doc in resultado) {
       final fecha = DateTime.tryParse(doc['fecha'] ?? '') ?? DateTime.now();
 
-      if (doc['tipo'] == 'nota' &&
+      if ((doc['tipo'] == 'Nota examen' || doc['tipo'] == 'Nota trabajo') &&
           doc['nota'] != null &&
           double.tryParse(doc['nota'].toString()) != null) {
         final valor = double.parse(doc['nota'].toString());
@@ -536,7 +536,8 @@ class _VistaRendimientoState extends State<VistaRendimiento>
         asignaturas.putIfAbsent(asignatura, () => []).add(nota);
       }
 
-      if (doc['tipo'] == 'boletín' &&
+      if ((doc['tipo'] == 'Boletín de notas (trimestre)' ||
+              doc['tipo'] == 'Boletín de notas (anual)') &&
           doc['notasBoletin'] != null &&
           doc['notasBoletin'] is List) {
         for (var entrada in doc['notasBoletin']) {

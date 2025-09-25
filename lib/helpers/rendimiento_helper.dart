@@ -14,7 +14,7 @@ class RendimientoHelper {
     final observacionesController = TextEditingController();
     final notaController = TextEditingController();
     final asignaturaController = TextEditingController();
-    String tipoSeleccionado = 'nota';
+    String tipoSeleccionado = 'Nota examen';
     String trimestreSeleccionado = '1º Trimestre';
     FilePickerResult? archivoSeleccionado;
 
@@ -40,15 +40,23 @@ class RendimientoHelper {
               children: [
                 DropdownButtonFormField<String>(
                   value: tipoSeleccionado,
-                  items: ['nota', 'boletín', 'informe']
-                      .map(
-                        (tipo) =>
-                            DropdownMenuItem(value: tipo, child: Text(tipo)),
-                      )
-                      .toList(),
+                  items:
+                      [
+                            'Nota examen',
+                            'Nota trabajo',
+                            'Boletín de notas (trimestre)',
+                            'Boletín de notas (anual)',
+                          ]
+                          .map(
+                            (tipo) => DropdownMenuItem(
+                              value: tipo,
+                              child: Text(tipo),
+                            ),
+                          )
+                          .toList(),
                   onChanged: (val) {
                     setState(() {
-                      tipoSeleccionado = val ?? 'nota';
+                      tipoSeleccionado = val ?? 'Nota examen';
                     });
                   },
                   decoration: const InputDecoration(labelText: 'Tipo'),
@@ -57,7 +65,8 @@ class RendimientoHelper {
                   controller: tituloController,
                   decoration: const InputDecoration(labelText: 'Título'),
                 ),
-                if (tipoSeleccionado == 'nota') ...[
+                if (tipoSeleccionado == 'Nota examen' ||
+                    tipoSeleccionado == 'Nota trabajo') ...[
                   TextField(
                     controller: asignaturaController,
                     decoration: const InputDecoration(labelText: 'Asignatura'),
@@ -68,7 +77,7 @@ class RendimientoHelper {
                     keyboardType: TextInputType.number,
                   ),
                 ],
-                if (tipoSeleccionado == 'boletín') ...[
+                if (tipoSeleccionado.contains('Boletín')) ...[
                   const SizedBox(height: 12),
                   const Text(
                     'Notas del boletín',
@@ -123,7 +132,7 @@ class RendimientoHelper {
                     },
                   ),
                 ],
-                if (tipoSeleccionado == 'nota' || tipoSeleccionado == 'boletín')
+                if (tipoSeleccionado != 'Boletín de notas (anual)')
                   DropdownButtonFormField<String>(
                     value: trimestreSeleccionado,
                     decoration: const InputDecoration(labelText: 'Trimestre'),
@@ -172,16 +181,14 @@ class RendimientoHelper {
                 String? urlArchivo;
                 String? nombreArchivo;
 
-                if (archivoSeleccionado != null) {
-                  final archivo = archivoSeleccionado?.files.first;
-                  if (archivo != null) {
-                    final ref = FirebaseStorage.instance.ref(
-                      'rendimiento/${archivo.name}',
-                    );
-                    await ref.putData(archivo.bytes!);
-                    urlArchivo = await ref.getDownloadURL();
-                    nombreArchivo = archivo.name;
-                  }
+                if (archivoSeleccionado?.files.first != null) {
+                  final archivo = archivoSeleccionado!.files.first;
+                  final ref = FirebaseStorage.instance.ref(
+                    'rendimiento/${archivo.name}',
+                  );
+                  await ref.putData(archivo.bytes!);
+                  urlArchivo = await ref.getDownloadURL();
+                  nombreArchivo = archivo.name;
                 }
 
                 final Map<String, dynamic> datos = {
@@ -195,13 +202,15 @@ class RendimientoHelper {
                   'hijoID': hijoID,
                 };
 
-                if (tipoSeleccionado == 'nota') {
+                if (tipoSeleccionado == 'Nota examen' ||
+                    tipoSeleccionado == 'Nota trabajo') {
                   datos['nota'] = double.tryParse(nota) ?? 0.0;
                   datos['asignatura'] = asignatura;
                   datos['trimestre'] = trimestreSeleccionado;
                 }
 
-                if (tipoSeleccionado == 'boletín') {
+                if (tipoSeleccionado == 'Boletín de notas (trimestre)' ||
+                    tipoSeleccionado == 'Boletín de notas (anual)') {
                   datos['notasBoletin'] = notasBoletin
                       .map(
                         (fila) => {
@@ -211,7 +220,35 @@ class RendimientoHelper {
                         },
                       )
                       .toList();
-                  datos['trimestre'] = trimestreSeleccionado;
+                  if (tipoSeleccionado == 'Boletín de notas (trimestre)') {
+                    datos['trimestre'] = trimestreSeleccionado;
+                  }
+                }
+
+                // Validación para boletines duplicados
+                if (tipoSeleccionado == 'Boletín de notas (trimestre)' ||
+                    tipoSeleccionado == 'Boletín de notas (anual)') {
+                  final query = FirebaseFirestore.instance
+                      .collection('rendimiento')
+                      .where('hijoID', isEqualTo: hijoID)
+                      .where('tipo', isEqualTo: tipoSeleccionado);
+
+                  if (tipoSeleccionado == 'Boletín de notas (trimestre)') {
+                    query.where('trimestre', isEqualTo: trimestreSeleccionado);
+                  }
+
+                  final existing = await query.get();
+                  if (existing.docs.isNotEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Ya existe un boletín de ese tipo para el mismo periodo.',
+                        ),
+                        backgroundColor: Colors.redAccent,
+                      ),
+                    );
+                    return;
+                  }
                 }
 
                 await FirebaseFirestore.instance
