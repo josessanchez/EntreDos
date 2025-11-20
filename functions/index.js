@@ -127,6 +127,28 @@ async function sendToTokens(tokens, payload) {
   }
 }
 
+// Helper: verify a configured debug secret for HTTP debug endpoints
+function verifyDebugSecret(req, res) {
+  try {
+    const cfg = functions.config();
+    const expected = cfg && cfg.debug && cfg.debug.secret ? cfg.debug.secret : null;
+    if (!expected) {
+      res.status(500).json({ error: 'debug secret not configured' });
+      return false;
+    }
+    const provided = (req.query && req.query.secret) || (req.body && req.body.secret) || '';
+    if (String(provided) !== String(expected)) {
+      res.status(403).json({ error: 'forbidden' });
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('verifyDebugSecret error', e);
+    res.status(500).json({ error: 'server error' });
+    return false;
+  }
+}
+
 
 /**
  * Firestore trigger: when a message is created, send a push notification to the
@@ -201,6 +223,13 @@ exports.onMensajeCreated = functions.firestore
         }
         const hijoData = hijoSnap.data() || {};
         const progenitores = Array.isArray(hijoData.progenitores) ? hijoData.progenitores : (hijoData.progenitores || []);
+
+        // Security: validate sender belongs to the child's progenitores
+        if (!progenitores.includes(senderId)) {
+          console.log('onMensajeCreated: sender is not an authorized progenitor for hijoId=', hijoId, 'sender=', senderId);
+          return null;
+        }
+
         // Send to all progenitores except the sender
         const recipients = progenitores.filter(pid => pid && pid !== senderId);
         if (recipients.length === 0) {
@@ -304,6 +333,8 @@ exports.sendNotification = functions.https.onCall(async (data, context) => {
 // Usage: GET /debugGetTokens?uid=<USER_UID>
 exports.debugGetTokens = functions.https.onRequest(async (req, res) => {
   try {
+    // Require debug secret to avoid exposing tokens publicly
+    if (!verifyDebugSecret(req, res)) return;
     const uid = (req.query.uid || req.body && req.body.uid || '').toString();
     if (!uid) {
       res.status(400).json({ error: 'missing uid' });
@@ -326,6 +357,8 @@ exports.debugGetTokens = functions.https.onRequest(async (req, res) => {
 // Usage: POST/GET /debugSendToken?token=<FCM_TOKEN>
 exports.debugSendToken = functions.https.onRequest(async (req, res) => {
   try {
+    // Require debug secret to avoid exposing token send
+    if (!verifyDebugSecret(req, res)) return;
     const token = (req.query.token || (req.body && req.body.token) || '').toString();
     if (!token) return res.status(400).json({ error: 'missing token' });
 
