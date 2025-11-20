@@ -48,9 +48,10 @@ class _VistaAusenciasState extends State<VistaAusencias> {
                 final esPropio = ausencia['usuarioID'] == uidActual;
 
                 return TarjetaAusencia(
-                  fecha: ausencia['fecha'],
+                  fechaInicio: ausencia['fechaInicio'],
+                  fechaFin: ausencia['fechaFin'], // puede ser null
+                  tipo: ausencia['tipo'] ?? 'Otro',
                   motivo: ausencia['motivo'] ?? '',
-                  tipo: ausencia['tipo'] ?? 'ausencia',
                   observaciones: ausencia['observaciones'] ?? '',
                   nombreArchivo: ausencia['nombreArchivo'],
                   urlArchivo: ausencia['urlArchivo'],
@@ -59,6 +60,7 @@ class _VistaAusenciasState extends State<VistaAusencias> {
                   uidPropietario: ausencia['usuarioID'],
                   coleccion: 'ausencias',
                   puedeEditar: esPropio,
+                  justificada: ausencia['justificada'] ?? false,
                   onEliminado: cargarAusencias,
                 );
               },
@@ -73,10 +75,7 @@ class _VistaAusenciasState extends State<VistaAusencias> {
   Future<void> cargarAusencias() async {
     final resultado = await AusenciaHelper.obtenerPorHijo(widget.hijoID);
 
-    // Diagnóstico: imprime cada ausencia para verificar campos
-    for (var a in resultado) {
-      print('🚫 ${a['motivo']} - ${a['hijoID']} - ${a['usuarioID']}');
-    }
+    resultado.sort((a, b) => b['fechaInicio'].compareTo(a['fechaInicio']));
 
     setState(() {
       ausencias = resultado;

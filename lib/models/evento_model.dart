@@ -38,8 +38,13 @@ class Evento {
       hijoId: data['hijoId'] ?? '',
       hijoNombre: data['hijoNombre'] ?? '',
       creadorUid: data['creadorUid'] ?? '',
-      documentoUrl: data['documentoUrl'],
-      documentoNombre: data['documentoNombre'],
+      // Support both canonical keys and legacy/alternate names
+      documentoUrl:
+          data['documentoUrl'] ?? data['urlArchivo'] ?? data['documentoUrl'],
+      documentoNombre:
+          data['documentoNombre'] ??
+          data['nombreArchivo'] ??
+          data['documentoNombre'],
       notas: data['notas'],
     );
   }
@@ -52,8 +57,11 @@ class Evento {
       'hijoId': hijoId,
       'hijoNombre': hijoNombre,
       'creadorUid': creadorUid,
+      // Store both canonical and alternate keys so different UIs/readers work
       'documentoUrl': documentoUrl,
+      'urlArchivo': documentoUrl,
       'documentoNombre': documentoNombre,
+      'nombreArchivo': documentoNombre,
       'notas': notas,
     };
   }

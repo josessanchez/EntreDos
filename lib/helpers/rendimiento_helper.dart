@@ -10,11 +10,9 @@ class RendimientoHelper {
     required String hijoID,
     required VoidCallback onGuardado,
   }) async {
-    final tituloController = TextEditingController();
     final observacionesController = TextEditingController();
-    final notaController = TextEditingController();
     final asignaturaController = TextEditingController();
-    String tipoSeleccionado = 'Nota examen';
+    String tipoSeleccionado = 'Boletín de notas (trimestre)';
     String trimestreSeleccionado = '1º Trimestre';
     FilePickerResult? archivoSeleccionado;
 
@@ -40,43 +38,29 @@ class RendimientoHelper {
               children: [
                 DropdownButtonFormField<String>(
                   value: tipoSeleccionado,
+                  style: const TextStyle(fontSize: 16),
                   items:
                       [
-                            'Nota examen',
-                            'Nota trabajo',
                             'Boletín de notas (trimestre)',
                             'Boletín de notas (anual)',
                           ]
                           .map(
                             (tipo) => DropdownMenuItem(
                               value: tipo,
-                              child: Text(tipo),
+                              child: Text(
+                                tipo,
+                                style: const TextStyle(fontSize: 16),
+                              ),
                             ),
                           )
                           .toList(),
                   onChanged: (val) {
                     setState(() {
-                      tipoSeleccionado = val ?? 'Nota examen';
+                      tipoSeleccionado = val ?? 'Boletín de notas (trimestre)';
                     });
                   },
                   decoration: const InputDecoration(labelText: 'Tipo'),
                 ),
-                TextField(
-                  controller: tituloController,
-                  decoration: const InputDecoration(labelText: 'Título'),
-                ),
-                if (tipoSeleccionado == 'Nota examen' ||
-                    tipoSeleccionado == 'Nota trabajo') ...[
-                  TextField(
-                    controller: asignaturaController,
-                    decoration: const InputDecoration(labelText: 'Asignatura'),
-                  ),
-                  TextField(
-                    controller: notaController,
-                    decoration: const InputDecoration(labelText: 'Nota'),
-                    keyboardType: TextInputType.number,
-                  ),
-                ],
                 if (tipoSeleccionado.contains('Boletín')) ...[
                   const SizedBox(height: 12),
                   const Text(
@@ -94,8 +78,10 @@ class RendimientoHelper {
                               Expanded(
                                 child: TextField(
                                   controller: entry.value['asignatura'],
+                                  style: const TextStyle(fontSize: 16),
                                   decoration: const InputDecoration(
                                     labelText: 'Asignatura',
+                                    labelStyle: TextStyle(fontSize: 16),
                                   ),
                                 ),
                               ),
@@ -103,8 +89,10 @@ class RendimientoHelper {
                               Expanded(
                                 child: TextField(
                                   controller: entry.value['nota'],
+                                  style: const TextStyle(fontSize: 16),
                                   decoration: const InputDecoration(
                                     labelText: 'Nota',
+                                    labelStyle: TextStyle(fontSize: 16),
                                   ),
                                   keyboardType: TextInputType.number,
                                 ),
@@ -132,14 +120,22 @@ class RendimientoHelper {
                     },
                   ),
                 ],
+
                 if (tipoSeleccionado != 'Boletín de notas (anual)')
                   DropdownButtonFormField<String>(
                     value: trimestreSeleccionado,
-                    decoration: const InputDecoration(labelText: 'Trimestre'),
+                    decoration: const InputDecoration(
+                      labelText: 'Trimestre',
+                      labelStyle: TextStyle(fontSize: 16),
+                    ),
+                    style: const TextStyle(fontSize: 16),
                     items:
                         const ['1º Trimestre', '2º Trimestre', '3º Trimestre']
                             .map(
-                              (t) => DropdownMenuItem(value: t, child: Text(t)),
+                              (t) => DropdownMenuItem(
+                                value: t,
+                                child: Text(t, style: TextStyle(fontSize: 16)),
+                              ),
                             )
                             .toList(),
                     onChanged: (val) {
@@ -173,9 +169,7 @@ class RendimientoHelper {
               child: const Text('Guardar'),
               onPressed: () async {
                 final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-                final titulo = tituloController.text.trim();
                 final observaciones = observacionesController.text.trim();
-                final nota = notaController.text.trim();
                 final asignatura = asignaturaController.text.trim();
                 final fecha = DateTime.now().toIso8601String();
                 String? urlArchivo;
@@ -192,7 +186,6 @@ class RendimientoHelper {
                 }
 
                 final Map<String, dynamic> datos = {
-                  'titulo': titulo,
                   'tipo': tipoSeleccionado,
                   'observaciones': observaciones,
                   'fecha': fecha,
@@ -202,15 +195,7 @@ class RendimientoHelper {
                   'hijoID': hijoID,
                 };
 
-                if (tipoSeleccionado == 'Nota examen' ||
-                    tipoSeleccionado == 'Nota trabajo') {
-                  datos['nota'] = double.tryParse(nota) ?? 0.0;
-                  datos['asignatura'] = asignatura;
-                  datos['trimestre'] = trimestreSeleccionado;
-                }
-
-                if (tipoSeleccionado == 'Boletín de notas (trimestre)' ||
-                    tipoSeleccionado == 'Boletín de notas (anual)') {
+                if (tipoSeleccionado.contains('Boletín')) {
                   datos['notasBoletin'] = notasBoletin
                       .map(
                         (fila) => {
@@ -225,24 +210,49 @@ class RendimientoHelper {
                   }
                 }
 
-                // Validación para boletines duplicados
-                if (tipoSeleccionado == 'Boletín de notas (trimestre)' ||
-                    tipoSeleccionado == 'Boletín de notas (anual)') {
+                // Validación para boletines duplicados y ordenados
+                if (tipoSeleccionado == 'Boletín de notas (trimestre)') {
                   final query = FirebaseFirestore.instance
                       .collection('rendimiento')
                       .where('hijoID', isEqualTo: hijoID)
-                      .where('tipo', isEqualTo: tipoSeleccionado);
-
-                  if (tipoSeleccionado == 'Boletín de notas (trimestre)') {
-                    query.where('trimestre', isEqualTo: trimestreSeleccionado);
-                  }
+                      .where('tipo', isEqualTo: 'Boletín de notas (trimestre)');
 
                   final existing = await query.get();
-                  if (existing.docs.isNotEmpty) {
+                  final trimestresExistentes = existing.docs
+                      .map((doc) => doc['trimestre'] as String)
+                      .toList();
+
+                  if (trimestresExistentes.contains(trimestreSeleccionado)) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
-                          'Ya existe un boletín de ese tipo para el mismo periodo.',
+                          'Ya existe un boletín para ese trimestre.',
+                        ),
+                        backgroundColor: Colors.redAccent,
+                      ),
+                    );
+                    return;
+                  }
+
+                  if (trimestreSeleccionado == '2º Trimestre' &&
+                      !trimestresExistentes.contains('1º Trimestre')) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Debes añadir primero el boletín del 1º Trimestre.',
+                        ),
+                        backgroundColor: Colors.redAccent,
+                      ),
+                    );
+                    return;
+                  }
+
+                  if (trimestreSeleccionado == '3º Trimestre' &&
+                      !trimestresExistentes.contains('2º Trimestre')) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Debes añadir primero el boletín del 2º Trimestre.',
                         ),
                         backgroundColor: Colors.redAccent,
                       ),
@@ -263,6 +273,205 @@ class RendimientoHelper {
         ),
       ),
     );
+  }
+
+  static Future<void> editar({
+    required BuildContext context,
+    required Map<String, dynamic> doc,
+    required VoidCallback onGuardado,
+  }) async {
+    final observacionesController = TextEditingController(
+      text: doc['observaciones'] ?? '',
+    );
+    final asignaturaController = TextEditingController(
+      text: doc['asignatura'] ?? '',
+    );
+    final notaController = TextEditingController(
+      text: doc['nota']?.toString() ?? '',
+    );
+    String tipoSeleccionado = doc['tipo'] ?? 'Boletín de notas (trimestre)';
+    String trimestreSeleccionado = doc['trimestre'] ?? '1º Trimestre';
+    final List<Map<String, TextEditingController>> notasBoletin = [];
+
+    if (doc['notasBoletin'] != null && doc['notasBoletin'] is List) {
+      for (var entrada in doc['notasBoletin']) {
+        notasBoletin.add({
+          'asignatura': TextEditingController(
+            text: entrada['asignatura'] ?? '',
+          ),
+          'nota': TextEditingController(
+            text: entrada['nota']?.toString() ?? '',
+          ),
+        });
+      }
+    } else {
+      notasBoletin.add({
+        'asignatura': TextEditingController(),
+        'nota': TextEditingController(),
+      });
+    }
+
+    await showDialog(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Editar registro de rendimiento'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: tipoSeleccionado,
+                  items:
+                      [
+                            'Boletín de notas (trimestre)',
+                            'Boletín de notas (anual)',
+                          ]
+                          .map(
+                            (tipo) => DropdownMenuItem(
+                              value: tipo,
+                              child: Text(tipo),
+                            ),
+                          )
+                          .toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      tipoSeleccionado = val ?? 'Boletín de notas (trimestre)';
+                    });
+                  },
+                  decoration: const InputDecoration(labelText: 'Tipo'),
+                ),
+                if (tipoSeleccionado.contains('Boletín')) ...[
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Notas del boletín',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Column(
+                    children: notasBoletin.asMap().entries.map((entry) {
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: entry.value['asignatura'],
+                              decoration: const InputDecoration(
+                                labelText: 'Asignatura',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: entry.value['nota'],
+                              decoration: const InputDecoration(
+                                labelText: 'Nota',
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.remove_circle_outline),
+                            onPressed: () {
+                              setState(() {
+                                notasBoletin.removeAt(entry.key);
+                              });
+                            },
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                  TextButton.icon(
+                    icon: const Icon(Icons.add),
+                    label: const Text('Añadir asignatura'),
+                    onPressed: () {
+                      setState(() {
+                        notasBoletin.add({
+                          'asignatura': TextEditingController(),
+                          'nota': TextEditingController(),
+                        });
+                      });
+                    },
+                  ),
+                ],
+                if (tipoSeleccionado != 'Boletín de notas (anual)')
+                  DropdownButtonFormField<String>(
+                    value: trimestreSeleccionado,
+                    decoration: const InputDecoration(labelText: 'Trimestre'),
+                    items:
+                        const ['1º Trimestre', '2º Trimestre', '3º Trimestre']
+                            .map(
+                              (t) => DropdownMenuItem(value: t, child: Text(t)),
+                            )
+                            .toList(),
+                    onChanged: (val) {
+                      setState(() {
+                        trimestreSeleccionado = val ?? '1º Trimestre';
+                      });
+                    },
+                  ),
+                TextField(
+                  controller: observacionesController,
+                  decoration: const InputDecoration(labelText: 'Observaciones'),
+                  maxLines: 3,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Cancelar'),
+              onPressed: () => Navigator.pop(context),
+            ),
+            ElevatedButton(
+              child: const Text('Guardar cambios'),
+              onPressed: () async {
+                final observaciones = observacionesController.text.trim();
+                final asignatura = asignaturaController.text.trim();
+                final nota = notaController.text.trim();
+                final fecha = DateTime.now().toIso8601String();
+
+                final Map<String, dynamic> datos = {
+                  'tipo': tipoSeleccionado,
+                  'observaciones': observaciones,
+                  'fecha': fecha,
+                  'usuarioID': doc['usuarioID'],
+                  'hijoID': doc['hijoID'],
+                };
+
+                if (tipoSeleccionado.contains('Boletín')) {
+                  datos['notasBoletin'] = notasBoletin
+                      .map(
+                        (fila) => {
+                          'asignatura': fila['asignatura']!.text.trim(),
+                          'nota':
+                              double.tryParse(fila['nota']!.text.trim()) ?? 0.0,
+                        },
+                      )
+                      .toList();
+                  if (tipoSeleccionado == 'Boletín de notas (trimestre)') {
+                    datos['trimestre'] = trimestreSeleccionado;
+                  }
+                }
+
+                await FirebaseFirestore.instance
+                    .collection('rendimiento')
+                    .doc(doc['id'])
+                    .update(datos);
+
+                Navigator.pop(context);
+                onGuardado();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static Future<void> eliminar(String id) async {
+    await FirebaseFirestore.instance.collection('rendimiento').doc(id).delete();
   }
 
   static Future<List<Map<String, dynamic>>> obtenerPorHijo(
@@ -288,6 +497,7 @@ class RendimientoHelper {
         'nombreArchivo': data['nombreArchivo'],
         'urlArchivo': data['urlArchivo'],
         'usuarioID': data['usuarioID'],
+        'hijoID': data['hijoID'],
       };
     }).toList();
   }

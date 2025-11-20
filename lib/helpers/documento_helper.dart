@@ -13,26 +13,39 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:entredos/screens/visor_pdf_screen.dart';
 
 class DocumentoHelper {
-  static Future<void> ver(BuildContext context, String nombre, String url) async {
+  static Future<void> ver(
+    BuildContext context,
+    String nombre,
+    String url,
+  ) async {
     final mime = lookupMimeType(nombre) ?? '';
     final extension = nombre.split('.').last.toLowerCase();
     final extensionesOffice = ['doc', 'docx', 'xls', 'xlsx'];
 
     if (mime.startsWith('image/')) {
-      Navigator.push(context, MaterialPageRoute(
-        builder: (_) => Scaffold(
-          backgroundColor: const Color(0xFF0D1B2A),
-          appBar: AppBar(
-            backgroundColor: const Color(0xFF1B263B),
-            title: Text(nombre, style: const TextStyle(fontFamily: 'Montserrat')),
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => Scaffold(
+            backgroundColor: const Color(0xFF0D1B2A),
+            appBar: AppBar(
+              backgroundColor: const Color(0xFF1B263B),
+              title: Text(
+                nombre,
+                style: const TextStyle(fontFamily: 'Montserrat'),
+              ),
+            ),
+            body: Center(child: Image.network(url)),
           ),
-          body: Center(child: Image.network(url)),
         ),
-      ));
+      );
     } else if (mime == 'application/pdf') {
-      Navigator.push(context, MaterialPageRoute(
-        builder: (_) => VisorPdfScreen(url: url, nombre: nombre),
-      ));
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => VisorPdfScreen(url: url, nombre: nombre),
+        ),
+      );
     } else if (extensionesOffice.contains(extension)) {
       try {
         final response = await http.get(Uri.parse(url));
@@ -45,10 +58,15 @@ class DocumentoHelper {
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Error al abrir "$nombre": $e', style: const TextStyle(fontFamily: 'Montserrat')),
+            content: Text(
+              '❌ Error al abrir "$nombre": $e',
+              style: const TextStyle(fontFamily: 'Montserrat'),
+            ),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             margin: const EdgeInsets.all(16),
           ),
         );
@@ -58,11 +76,16 @@ class DocumentoHelper {
     }
   }
 
-  static Future<void> descargar(BuildContext context, String nombre, String url) async {
+  static Future<void> descargar(
+    BuildContext context,
+    String nombre,
+    String url,
+  ) async {
     try {
       final dir = Directory('/storage/emulated/0/Download');
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final nombreFinal = '${nombre.split('.').first}_$timestamp.${nombre.split('.').last}';
+      final nombreFinal =
+          '${nombre.split('.').first}_$timestamp.${nombre.split('.').last}';
 
       final taskId = await FlutterDownloader.enqueue(
         url: url,
@@ -77,10 +100,15 @@ class DocumentoHelper {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('📥 Descarga iniciada para "$nombre"', style: const TextStyle(fontFamily: 'Montserrat')),
+          content: Text(
+            '📥 Descarga iniciada para "$nombre"',
+            style: const TextStyle(fontFamily: 'Montserrat'),
+          ),
           backgroundColor: Colors.blueAccent,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           margin: const EdgeInsets.all(16),
         ),
       );
@@ -93,10 +121,15 @@ class DocumentoHelper {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('❌ Error al descargar "$nombre": $e', style: const TextStyle(fontFamily: 'Montserrat')),
+          content: Text(
+            '❌ Error al descargar "$nombre": $e',
+            style: const TextStyle(fontFamily: 'Montserrat'),
+          ),
           backgroundColor: Colors.redAccent,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           margin: const EdgeInsets.all(16),
         ),
       );
@@ -115,10 +148,15 @@ class DocumentoHelper {
     if (uidActual != uidPropietario) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('❌ No tienes permisos para eliminar este archivo', style: const TextStyle(fontFamily: 'Montserrat')),
+          content: Text(
+            '❌ No tienes permisos para eliminar este archivo',
+            style: const TextStyle(fontFamily: 'Montserrat'),
+          ),
           backgroundColor: Colors.redAccent,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           margin: const EdgeInsets.all(16),
         ),
       );
@@ -140,16 +178,24 @@ class DocumentoHelper {
         ),
         actions: [
           TextButton(
-            child: const Text('Cancelar', style: TextStyle(fontFamily: 'Montserrat', color: Colors.white)),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(fontFamily: 'Montserrat', color: Colors.white),
+            ),
             onPressed: () => Navigator.pop(context, false),
           ),
           ElevatedButton(
-            child: const Text('Eliminar', style: TextStyle(fontFamily: 'Montserrat')),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(fontFamily: 'Montserrat'),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.redAccent,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             onPressed: () => Navigator.pop(context, true),
           ),
@@ -165,24 +211,37 @@ class DocumentoHelper {
         await ref.delete();
       }
 
-      await FirebaseFirestore.instance.collection(coleccion).doc(docId).delete();
+      await FirebaseFirestore.instance
+          .collection(coleccion)
+          .doc(docId)
+          .delete();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('🗑️ Documento "$nombre" eliminado', style: const TextStyle(fontFamily: 'Montserrat')),
+          content: Text(
+            '🗑️ Documento "$nombre" eliminado',
+            style: const TextStyle(fontFamily: 'Montserrat'),
+          ),
           backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           margin: const EdgeInsets.all(16),
         ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('❌ Error al eliminar: $e', style: const TextStyle(fontFamily: 'Montserrat')),
+          content: Text(
+            '❌ Error al eliminar: $e',
+            style: const TextStyle(fontFamily: 'Montserrat'),
+          ),
           backgroundColor: Colors.redAccent,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           margin: const EdgeInsets.all(16),
         ),
       );

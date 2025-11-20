@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:entredos/models/config_pagos.dart';
+import 'package:entredos/models/modelo_configuracion.dart';
+import 'package:flutter/material.dart';
 
 class EditarConfigPagos extends StatefulWidget {
   final String hijoID;
-  const EditarConfigPagos({required this.hijoID});
+  const EditarConfigPagos({super.key, required this.hijoID});
 
   @override
   State<EditarConfigPagos> createState() => _EditarConfigPagosState();
@@ -18,9 +18,66 @@ class _EditarConfigPagosState extends State<EditarConfigPagos> {
   bool divisionFlexible = true;
 
   @override
-  void initState() {
-    super.initState();
-    cargarConfig();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Configuración de pagos')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              DropdownButtonFormField<String>(
+                value: tipoCustodia,
+                items: ['Compartida', 'No compartida', 'Otro']
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                    .toList(),
+                onChanged: (val) =>
+                    setState(() => tipoCustodia = val ?? 'Compartida'),
+                decoration: const InputDecoration(
+                  labelText: 'Tipo de custodia',
+                ),
+              ),
+              SwitchListTile(
+                title: const Text('¿Permitir división flexible de gastos?'),
+                value: divisionFlexible,
+                onChanged: (val) => setState(() => divisionFlexible = val),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: gastosCompartidosCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Gastos compartidos (separados por coma)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: gastosIndividualesCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Gastos individuales (separados por coma)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: notasCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Notas personalizadas',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.save),
+                label: const Text('Guardar configuración'),
+                onPressed: guardarConfig,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> cargarConfig() async {
@@ -32,7 +89,7 @@ class _EditarConfigPagosState extends State<EditarConfigPagos> {
         .get();
 
     if (doc.exists) {
-      final config = ConfigPagos.fromSnapshot(doc);
+      final config = ModeloConfiguracion.fromSnapshot(doc);
       setState(() {
         tipoCustodia = config.tipoCustodia;
         divisionFlexible = config.divisionFlexible;
@@ -44,7 +101,7 @@ class _EditarConfigPagosState extends State<EditarConfigPagos> {
   }
 
   Future<void> guardarConfig() async {
-    final data = ConfigPagos(
+    final data = ModeloConfiguracion(
       tipoCustodia: tipoCustodia,
       divisionFlexible: divisionFlexible,
       notasPersonalizadas: notasCtrl.text.trim(),
@@ -67,65 +124,15 @@ class _EditarConfigPagosState extends State<EditarConfigPagos> {
         .doc('pagos')
         .set(data.toMap());
 
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ Configuración guardada')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('✅ Configuración guardada')));
     Navigator.pop(context);
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Configuración de pagos')),
-      body: Padding(
-        padding: EdgeInsets.all(16),
-        child: SingleChildScrollView(
-          child: Column(children: [
-            DropdownButtonFormField<String>(
-              value: tipoCustodia,
-              items: ['Compartida', 'No compartida', 'Otro']
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                  .toList(),
-              onChanged: (val) => setState(() => tipoCustodia = val ?? 'Compartida'),
-              decoration: InputDecoration(labelText: 'Tipo de custodia'),
-            ),
-            SwitchListTile(
-              title: Text('¿Permitir división flexible de gastos?'),
-              value: divisionFlexible,
-              onChanged: (val) => setState(() => divisionFlexible = val),
-            ),
-            SizedBox(height: 12),
-            TextField(
-              controller: gastosCompartidosCtrl,
-              decoration: InputDecoration(
-                labelText: 'Gastos compartidos (separados por coma)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            SizedBox(height: 12),
-            TextField(
-              controller: gastosIndividualesCtrl,
-              decoration: InputDecoration(
-                labelText: 'Gastos individuales (separados por coma)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            SizedBox(height: 12),
-            TextField(
-              controller: notasCtrl,
-              decoration: InputDecoration(
-                labelText: 'Notas personalizadas',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 3,
-            ),
-            SizedBox(height: 20),
-            ElevatedButton.icon(
-              icon: Icon(Icons.save),
-              label: Text('Guardar configuración'),
-              onPressed: guardarConfig,
-            )
-          ]),
-        ),
-      ),
-    );
+  void initState() {
+    super.initState();
+    cargarConfig();
   }
 }

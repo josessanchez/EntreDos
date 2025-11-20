@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:entredos/models/nota_academica.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -23,14 +25,8 @@ class GraficaEvolucionAcademica extends StatelessWidget {
         .toList();
 
     final valoresY = spots.map((s) => s.y).toList();
-    final minY = (valoresY.reduce((a, b) => a < b ? a : b) - 1).clamp(
-      0.0,
-      10.0,
-    );
-    final maxY = (valoresY.reduce((a, b) => a > b ? a : b) + 1).clamp(
-      0.0,
-      10.0,
-    );
+    final minY = valoresY.reduce(min).floorToDouble();
+    final maxY = valoresY.reduce(max).ceilToDouble();
 
     return Column(
       children: [
@@ -57,9 +53,10 @@ class GraficaEvolucionAcademica extends StatelessWidget {
                   sideTitles: SideTitles(
                     showTitles: true,
                     reservedSize: 36,
+                    interval: 1, // pasos de 1 en el eje Y
                     getTitlesWidget: (value, meta) {
                       return Text(
-                        value.toStringAsFixed(0),
+                        value.toInt().toString(), // solo enteros
                         style: const TextStyle(fontSize: 12),
                         textAlign: TextAlign.center,
                       );

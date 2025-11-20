@@ -1,12 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:entredos/screens/salud/salud_screen.dart';
 import 'package:entredos/widgets/pagos/vista_pagos.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'academico_screen.dart';
 import 'calendario_screen.dart';
-import 'document_list_screen.dart';
+import 'mensajeria/mensajeria_screen.dart';
 import 'hijos_screen.dart';
+import 'identificacion_list_screen.dart';
 
 class DashboardButton extends StatefulWidget {
   final IconData icon;
@@ -445,11 +447,11 @@ class _IndexScreenState extends State<IndexScreen> {
                     runSpacing: 1,
                     children: [
                       DashboardButton(
-                        icon: Icons.folder,
-                        label: 'Documentos',
+                        icon: Icons.badge,
+                        label: 'Identificación',
                         description:
                             'Gestiona los archivos importantes del menor',
-                        color: Colors.orange,
+                        color: const Color.fromARGB(255, 2, 191, 238),
                         onPressed: () {
                           if (sinHijos) {
                             mostrarMensajeSeleccion(context);
@@ -458,7 +460,7 @@ class _IndexScreenState extends State<IndexScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => DocumentListScreen(
+                              builder: (_) => IdentificacionListScreen(
                                 hijoId: hijoIdSeleccionado!,
                                 hijoNombre: hijoNombreSeleccionado ?? '',
                               ),
@@ -471,7 +473,7 @@ class _IndexScreenState extends State<IndexScreen> {
                         label: 'Calendario',
                         description:
                             'Consulta los eventos importantes del menor',
-                        color: Colors.blue,
+                        color: const Color.fromARGB(255, 250, 143, 55),
                         onPressed: () {
                           if (sinHijos) {
                             mostrarMensajeSeleccion(context);
@@ -534,7 +536,7 @@ class _IndexScreenState extends State<IndexScreen> {
                         label: 'Gestión de Hijos',
                         description:
                             'Añade hijos a tu app para empezar a gestionarlos',
-                        color: Colors.teal,
+                        color: const Color.fromARGB(255, 252, 255, 98),
                         highlight: sinHijos, // nuevo parámetro visual
                         onPressed: () async {
                           await Navigator.push(
@@ -542,6 +544,49 @@ class _IndexScreenState extends State<IndexScreen> {
                             MaterialPageRoute(builder: (_) => HijosScreen()),
                           );
                           cargarHijos();
+                        },
+                      ),
+                      DashboardButton(
+                        icon: Icons.health_and_safety,
+                        label: 'Salud',
+                        description: 'Espacio de citas y salud de tus hijos',
+                        color: const Color.fromARGB(255, 240, 5, 5),
+                        onPressed: () {
+                          if (sinHijos) {
+                            mostrarMensajeSeleccion(context);
+                            return;
+                          }
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => SaludScreen(
+                                hijoId: hijoIdSeleccionado!,
+                                hijoNombre: hijoNombreSeleccionado!,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      DashboardButton(
+                        icon: Icons.message,
+                        label: 'Mensajería',
+                        description:
+                            'Enviar peticiones y mensajes relacionados al menor',
+                        color: Colors.teal,
+                        onPressed: () {
+                          if (sinHijos) {
+                            mostrarMensajeSeleccion(context);
+                            return;
+                          }
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MensajeriaScreen(
+                                hijoId: hijoIdSeleccionado!,
+                                hijoNombre: hijoNombreSeleccionado ?? '',
+                              ),
+                            ),
+                          );
                         },
                       ),
                     ],

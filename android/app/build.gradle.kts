@@ -20,6 +20,8 @@ android {
     compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
+    // Enable core library desugaring required by some libraries (e.g. flutter_local_notifications)
+    isCoreLibraryDesugaringEnabled = true
 }
 
     kotlinOptions {
@@ -35,6 +37,11 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Desugaring libs for Java 8+ APIs on older Android runtimes
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
 
 apply(plugin = "com.google.gms.google-services")

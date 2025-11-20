@@ -1,99 +1,46 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../models/evento_model.dart';
+import '../widgets/formulario_evento.dart';
 
 class EventoHelper {
   static Future<void> crear({
     required BuildContext context,
     required String hijoID,
+    String hijoNombre = '',
     required VoidCallback onGuardado,
+    String coleccionDestino = 'eventos',
   }) async {
-    final tituloController = TextEditingController();
-    final descripcionController = TextEditingController();
-    String? tipoSeleccionado;
-    FilePickerResult? archivoSeleccionado;
-
-    await showDialog(
+    // Reuse the existing FormularioEvento dialog so attachments and upload
+    // behavior match the full calendar screen.
+    final resultado = await showDialog<Evento>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Nuevo evento escolar'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: tituloController,
-              decoration: const InputDecoration(labelText: 'Título'),
-            ),
-            TextField(
-              controller: descripcionController,
-              decoration: const InputDecoration(labelText: 'Descripción'),
-            ),
-            DropdownButtonFormField<String>(
-              value: null,
-              items: ['Cultural', 'Refuerzo', 'Excursión', 'Otro']
-                  .map(
-                    (tipo) => DropdownMenuItem(value: tipo, child: Text(tipo)),
-                  )
-                  .toList(),
-              onChanged: (val) => tipoSeleccionado = val,
-              decoration: const InputDecoration(labelText: 'Tipo'),
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.attach_file),
-              label: const Text('Adjuntar archivo'),
-              onPressed: () async {
-                archivoSeleccionado = await FilePicker.platform.pickFiles();
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            child: const Text('Cancelar'),
-            onPressed: () => Navigator.pop(context),
-          ),
-          ElevatedButton(
-            child: const Text('Guardar'),
-            onPressed: () async {
-              final titulo = tituloController.text.trim();
-              final descripcion = descripcionController.text.trim();
-              final tipo = tipoSeleccionado ?? 'Otro';
-              final fecha = DateTime.now().toIso8601String();
-              final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-              String? urlArchivo;
-              String? nombreArchivo;
-
-              if (archivoSeleccionado != null) {
-                final archivo = archivoSeleccionado!.files.first;
-                final ref = FirebaseStorage.instance.ref(
-                  'eventos/${archivo.name}',
-                );
-                await ref.putData(archivo.bytes!);
-                urlArchivo = await ref.getDownloadURL();
-                nombreArchivo = archivo.name;
-              }
-
-              await FirebaseFirestore.instance.collection('eventos').add({
-                'titulo': titulo,
-                'descripcion': descripcion,
-                'tipo': tipo,
-                'fecha': fecha,
-                'hijoID': hijoID,
-                'usuarioID': uid,
-                'nombreArchivo': nombreArchivo,
-                'urlArchivo': urlArchivo,
-              });
-
-              Navigator.pop(context);
-              onGuardado();
-            },
-          ),
-        ],
+      builder: (_) => FormularioEvento(
+        hijoId: hijoID,
+        hijoNombre: hijoNombre,
+        coleccion: coleccionDestino,
       ),
     );
+
+    if (resultado != null) {
+      // The form already saved the event to Firestore and returned the Evento.
+      // Just call the onGuardado callback and notify the user.
+      onGuardado();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.black87,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          content: const Text(
+            '✅ Evento creado',
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+    }
   }
 
   static Future<List<Map<String, dynamic>>> obtenerPorHijo(
