@@ -49,3 +49,16 @@ jobs:
         with:
           name: app-release-aab
           path: build/app/outputs/bundle/release/app-release.aab
+
+      - name: Upload to Google Play (optional)
+        if: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT != '' }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT }}
+          packageName: com.example.entredos
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: internal
+          mappingFileUpload: false
+        env:
+          # Optional: override defaults if needed
+          JAVA_HOME: /usr/lib/jvm/zulu-11-amd64

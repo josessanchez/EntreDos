@@ -17,6 +17,17 @@ CI secrets (recommended names)
 - `PLAY_STORE_SERVICE_ACCOUNT` — base64 JSON for Play Store upload (optional)
 - `APP_STORE_CONNECT_KEY` — base64 P8 key or Fastlane credentials for App Store (optional)
 
+Example Play Store upload step
+
+If you want CI to upload the AAB automatically to the internal track, add the secret `PLAY_STORE_SERVICE_ACCOUNT` with the service account JSON content (plain JSON). The `build-release.yml` workflow will detect it and upload to the `internal` track using `r0adkll/upload-google-play`.
+
+To create the service account JSON:
+
+1. In Google Play Console go to **Setup > API access** and create a service account with `Release Manager` permissions.
+2. Create a JSON key and copy its entire contents into the GitHub secret `PLAY_STORE_SERVICE_ACCOUNT`.
+
+Notes: keep the key private; rotating keys is recommended if an account is compromised.
+
 High-level steps to release Android (manual)
 1. Ensure `keystore.properties` exists in repo root (local only) or CI secrets are set.
 2. Build signed AAB locally:
