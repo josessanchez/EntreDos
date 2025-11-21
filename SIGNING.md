@@ -54,6 +54,16 @@ flutter build apk --release
   - Run `flutter build appbundle --release`
   - Upload artifact
 
+CI secrets and names (suggested)
+
+- `KEYSTORE_BASE64`: base64-encoded keystore file (optional)
+- `KEYSTORE_PASSWORD`: keystore password
+- `KEY_ALIAS`: keystore alias
+- `KEY_PASSWORD`: key password
+- `FIREBASE_TOKEN`: Firebase CI token (for functions deploy)
+
+The repository includes a `RELEASE_CHECKLIST.md` and a `ci.yml` workflow that runs `flutter analyze` and a debug build on PRs. There's also `functions-deploy.yml` which can deploy Cloud Functions from `main` using the `FIREBASE_TOKEN` secret. See `.github/workflows/` for details.
+
 5) Optional: Verify the signing
 
 - Use `apksigner` (Android SDK build tools) to verify the built artifact:
