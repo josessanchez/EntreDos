@@ -1,0 +1,51 @@
+name: Build Android Release AAB
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+
+      - name: Decode keystore and write files
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          STORE_FILE: keystore.jks
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 --decode > $STORE_FILE
+            echo "storeFile=$(pwd)/$STORE_FILE" > keystore.properties
+            echo "storePassword=$KEYSTORE_PASSWORD" >> keystore.properties
+            echo "keyAlias=$KEY_ALIAS" >> keystore.properties
+            echo "keyPassword=$KEY_PASSWORD" >> keystore.properties
+            cat keystore.properties
+          else
+            echo "No KEYSTORE_BASE64 secret found — building without signing (debug or existing config)"
+          fi
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build AppBundle
+        run: flutter build appbundle --release --no-shrink
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: build/app/outputs/bundle/release/app-release.aab

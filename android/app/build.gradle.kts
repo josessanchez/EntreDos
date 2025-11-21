@@ -4,6 +4,9 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+import java.io.FileInputStream
+import java.util.Properties
+
 android {
     namespace = "com.example.entredos"
     compileSdk = 35
@@ -29,8 +32,27 @@ android {
     }
 
     buildTypes {
+        // Configure release signing only when a `keystore.properties` file is provided
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            // Use a release signing config if present; otherwise fall back to debug signing
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
+        }
+    }
+}
+
+// Load keystore properties from project root `keystore.properties` if present.
+// This file should NOT be committed — a template file is included in the repo instead.
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+if (keystorePropertiesFile.exists()) {
+    val keystoreProperties = Properties()
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+
+    android.signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties.getProperty("keyAlias")
+            keyPassword = keystoreProperties.getProperty("keyPassword")
+            storeFile = file(keystoreProperties.getProperty("storeFile"))
+            storePassword = keystoreProperties.getProperty("storePassword")
         }
     }
 }

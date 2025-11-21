@@ -76,3 +76,5 @@ app.*.map.json
 
 # Otros
 app-example
+# Local keystore properties (copy of template)
+keystore.properties
