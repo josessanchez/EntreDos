@@ -1,5 +1,3 @@
-
-
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -9,37 +7,37 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:entredos/utils/app_logger.dart';
 
 class DocumentScreen extends StatefulWidget {
   final String hijoId;
 
-  const DocumentScreen({required this.hijoId});
+  const DocumentScreen({super.key, required this.hijoId});
 
   @override
   _DocumentScreenState createState() => _DocumentScreenState();
 }
-
 
 class _DocumentScreenState extends State<DocumentScreen> {
   String mensaje = '⏳ Esperando acción...';
 
   Future<void> subirDocumento() async {
     await Permission.storage.request();
-    print('📂 Iniciando selección de archivo...');
+    appLogger.d('📂 Iniciando selección de archivo...');
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      print('❌ Usuario no autenticado');
+      appLogger.w('❌ Usuario no autenticado');
       setState(() => mensaje = '❌ Debes iniciar sesión para subir documentos');
       return;
     }
 
     try {
       final resultado = await FilePicker.platform.pickFiles();
-      print('📦 Resultado del selector: $resultado');
+      appLogger.d('📦 Resultado del selector: $resultado');
 
       if (resultado == null || resultado.files.single.path == null) {
-        print('❌ No se seleccionó archivo o no tiene ruta válida');
+        appLogger.w('❌ No se seleccionó archivo o no tiene ruta válida');
         setState(() => mensaje = '❌ No se pudo acceder al archivo');
         return;
       }
@@ -48,12 +46,12 @@ class _DocumentScreenState extends State<DocumentScreen> {
       String nombreOriginal = resultado.files.single.name;
       int tamano = archivo.lengthSync();
 
-      print('📄 Archivo seleccionado: $nombreOriginal');
-      print('📁 Ruta del archivo: ${archivo.path}');
-      print('📏 Tamaño: $tamano bytes');
+      appLogger.i('📄 Archivo seleccionado: $nombreOriginal');
+      appLogger.d('📁 Ruta del archivo: ${archivo.path}');
+      appLogger.d('📏 Tamaño: $tamano bytes');
 
       if (tamano > 5 * 1024 * 1024) {
-        print('⚠️ El archivo es demasiado grande');
+        appLogger.w('⚠️ El archivo es demasiado grande');
         setState(() => mensaje = '❌ El archivo supera 5 MB');
         return;
       }
@@ -67,7 +65,7 @@ class _DocumentScreenState extends State<DocumentScreen> {
 
       // Compresión solo si es .jpg/.jpeg
       if (esImagenJpg) {
-        print('🖼️ Imagen JPEG detectada, comprimiendo...');
+        appLogger.d('🖼️ Imagen JPEG detectada, comprimiendo...');
         final tempDir = await getTemporaryDirectory();
         final comprimido = await FlutterImageCompress.compressAndGetFile(
           archivo.path,
@@ -79,11 +77,11 @@ class _DocumentScreenState extends State<DocumentScreen> {
           extension = 'jpg';
           nombreFinal = '${baseNombre}_compressed_$timestamp.jpg';
         } else {
-          print('⚠️ Compresión fallida, usando original');
+          appLogger.w('⚠️ Compresión fallida, usando original');
           nombreFinal = '${baseNombre}_$timestamp.$extension';
         }
       } else {
-        print('🔒 No se comprime imagen PNG o documento');
+        appLogger.d('🔒 No se comprime imagen PNG o documento');
         nombreFinal = '${baseNombre}_$timestamp.$extension';
       }
 
@@ -101,26 +99,28 @@ class _DocumentScreenState extends State<DocumentScreen> {
           contentType = 'application/pdf';
           break;
         case 'docx':
-          contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+          contentType =
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
           break;
         case 'xlsx':
-          contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+          contentType =
+              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
           break;
         default:
           contentType = 'application/octet-stream';
       }
 
-      print('📂 Archivo final: $nombreFinal');
-      final refStorage = FirebaseStorage.instance
-          .ref()
-          .child('documentos/${user.uid}/$nombreFinal');
+      appLogger.d('📂 Archivo final: $nombreFinal');
+      final refStorage = FirebaseStorage.instance.ref().child(
+        'documentos/${user.uid}/$nombreFinal',
+      );
       final metadata = SettableMetadata(contentType: contentType);
 
       await refStorage.putFile(archivo, metadata);
-      print('📤 Subida completada');
+      appLogger.i('📤 Subida completada');
 
       final url = await refStorage.getDownloadURL();
-      print('🌐 URL: $url');
+      appLogger.d('🌐 URL: $url');
 
       await FirebaseFirestore.instance.collection('documentos').add({
         'nombre': nombreFinal,
@@ -131,10 +131,10 @@ class _DocumentScreenState extends State<DocumentScreen> {
         'hijoID': widget.hijoId,
       });
 
-      print('✅ Documento registrado en Firestore');
+      appLogger.i('✅ Documento registrado en Firestore');
       setState(() => mensaje = '✅ Documento subido correctamente');
     } catch (e) {
-      print('🔥 Error inesperado: $e');
+      appLogger.e('🔥 Error inesperado: $e', e);
       setState(() => mensaje = '❌ Error al subir: $e');
     }
   }

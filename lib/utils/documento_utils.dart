@@ -4,7 +4,9 @@ import 'package:http/http.dart' as http;
 import 'package:open_filex/open_filex.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:path_provider/path_provider.dart';
+// ignore_for_file: use_build_context_synchronously
 import 'package:flutter/services.dart';
+import 'package:entredos/utils/app_logger.dart';
 import '../screens/visor_pdf_local_screen.dart';
 
 final _scanner = const MethodChannel('media_scanner');
@@ -15,6 +17,9 @@ Future<void> verDocumentoDesdeCalendario(
   String nombre,
 ) async {
   if (url.isEmpty || nombre.isEmpty) return;
+  final navigator = Navigator.of(context);
+  final messenger = ScaffoldMessenger.of(context);
+  final localContext = navigator.context;
 
   try {
     final ext = nombre.split('.').last.toLowerCase();
@@ -29,7 +34,7 @@ Future<void> verDocumentoDesdeCalendario(
 
     if (['jpg', 'jpeg', 'png'].contains(ext)) {
       showDialog(
-        context: context,
+        context: localContext,
         builder: (_) => Dialog(
           backgroundColor: Colors.black,
           child: InteractiveViewer(
@@ -38,20 +43,23 @@ Future<void> verDocumentoDesdeCalendario(
         ),
       );
     } else if (ext == 'pdf') {
-      Navigator.push(context, MaterialPageRoute(
-        builder: (_) => VisorPdfLocalScreen(localPath: archivoLocal.path, nombre: nombre),
-      ));
+      await navigator.push(
+        MaterialPageRoute(
+          builder: (_) =>
+              VisorPdfLocalScreen(localPath: archivoLocal.path, nombre: nombre),
+        ),
+      );
     } else {
       final result = await OpenFilex.open(archivoLocal.path);
       if (result.type != ResultType.done) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text('❌ No se pudo abrir "$nombre"')),
         );
       }
     }
-  } catch (e) {
-    print('❌ Error verDocumento: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
+  } catch (e, st) {
+    appLogger.e('❌ Error verDocumento: $e', e, st);
+    messenger.showSnackBar(
       SnackBar(content: Text('❌ No se pudo abrir el documento')),
     );
   }
@@ -63,6 +71,7 @@ Future<void> descargarDocumentoDesdeCalendario(
   String nombre,
 ) async {
   if (url.isEmpty || nombre.isEmpty) return;
+  final messenger = ScaffoldMessenger.of(context);
 
   try {
     final dir = Directory('/storage/emulated/0/Download');
@@ -87,7 +96,7 @@ Future<void> descargarDocumentoDesdeCalendario(
 
     if (taskId == null) throw Exception('No se pudo iniciar descarga');
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
       SnackBar(content: Text('📥 Descargando "$finalNombre"...')),
     );
 
@@ -95,9 +104,9 @@ Future<void> descargarDocumentoDesdeCalendario(
       await Future.delayed(Duration(seconds: 3));
       await _scanner.invokeMethod('scanFile', {'path': ruta});
     }
-  } catch (e) {
-    print('❌ Error descargarDocumento: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
+  } catch (e, st) {
+    appLogger.e('❌ Error descargarDocumento: $e', e, st);
+    messenger.showSnackBar(
       SnackBar(content: Text('❌ Error al descargar el documento')),
     );
   }

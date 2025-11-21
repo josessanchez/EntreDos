@@ -8,7 +8,7 @@ class VisorPdfScreen extends StatefulWidget {
   final String url;
   final String nombre;
 
-  VisorPdfScreen({required this.url, required this.nombre});
+  const VisorPdfScreen({super.key, required this.url, required this.nombre});
 
   @override
   _VisorPdfScreenState createState() => _VisorPdfScreenState();

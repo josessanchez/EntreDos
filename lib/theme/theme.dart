@@ -7,27 +7,49 @@ final ThemeData theme = ThemeData(
   colorScheme: const ColorScheme.dark(
     primary: Color(0xFF5C2D91),
     secondary: Color(0xFFC76DFF),
-    background: Color(0xFF1E1E2C),
     surface: Color(0xFF2B2B3D),
     error: Colors.redAccent,
     onPrimary: Colors.white,
     onSecondary: Colors.white,
-    onBackground: Colors.white70,
     onSurface: Colors.white,
     onError: Colors.white,
   ),
   textTheme: const TextTheme(
-  titleLarge: TextStyle(color: Colors.white, fontSize: 24, fontFamily: 'Montserrat'),
-  titleMedium: TextStyle(color: Colors.white, fontSize: 20, fontFamily: 'Montserrat'),
-  bodyLarge: TextStyle(color: Colors.white70, fontSize: 16, fontFamily: 'Montserrat'),
-  bodyMedium: TextStyle(color: Colors.white70, fontSize: 14, fontFamily: 'Montserrat'),
-  labelSmall: TextStyle(color: Colors.white38, fontSize: 12, fontFamily: 'Montserrat'),
-),
+    titleLarge: TextStyle(
+      color: Colors.white,
+      fontSize: 24,
+      fontFamily: 'Montserrat',
+    ),
+    titleMedium: TextStyle(
+      color: Colors.white,
+      fontSize: 20,
+      fontFamily: 'Montserrat',
+    ),
+    bodyLarge: TextStyle(
+      color: Colors.white70,
+      fontSize: 16,
+      fontFamily: 'Montserrat',
+    ),
+    bodyMedium: TextStyle(
+      color: Colors.white70,
+      fontSize: 14,
+      fontFamily: 'Montserrat',
+    ),
+    labelSmall: TextStyle(
+      color: Colors.white38,
+      fontSize: 12,
+      fontFamily: 'Montserrat',
+    ),
+  ),
   appBarTheme: const AppBarTheme(
     color: Color(0xFF1E1E2C),
     elevation: 0,
     iconTheme: IconThemeData(color: Colors.white),
-    titleTextStyle: TextStyle(color: Colors.white, fontSize: 20, fontFamily: 'Montserrat'),
+    titleTextStyle: TextStyle(
+      color: Colors.white,
+      fontSize: 20,
+      fontFamily: 'Montserrat',
+    ),
   ),
   buttonTheme: const ButtonThemeData(
     buttonColor: Color(0xFFC76DFF),

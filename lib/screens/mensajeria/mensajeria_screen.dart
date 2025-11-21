@@ -15,8 +15,10 @@ import 'package:intl/intl.dart';
 import 'package:entredos/screens/visor_pdf_local_screen.dart';
 
 import 'package:entredos/models/mensaje.dart';
+import 'package:entredos/utils/app_logger.dart';
 import 'package:entredos/services/mensajeria_service.dart';
 import 'package:entredos/widgets/mensajeria/message_tile_fixed.dart';
+import 'package:entredos/widgets/fallback_body.dart';
 
 class MensajeriaScreen extends StatefulWidget {
   final String hijoId;
@@ -76,35 +78,41 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
   }) {
     final s = (query ?? '').trim();
     final defaultStyle = baseStyle ?? TextStyle(color: Colors.white70);
-    if (s.isEmpty)
+    if (s.isEmpty) {
       return Text(text, style: defaultStyle, overflow: TextOverflow.ellipsis);
+    }
 
     try {
       final pattern = RegExp(RegExp.escape(s), caseSensitive: false);
       final matches = pattern.allMatches(text);
-      if (matches.isEmpty)
+      if (matches.isEmpty) {
         return Text(text, style: defaultStyle, overflow: TextOverflow.ellipsis);
+      }
 
       final spans = <TextSpan>[];
       int last = 0;
       for (final m in matches) {
-        if (m.start > last)
+        if (m.start > last) {
           spans.add(
             TextSpan(text: text.substring(last, m.start), style: defaultStyle),
           );
+        }
         spans.add(
           TextSpan(
             text: text.substring(m.start, m.end),
             style: defaultStyle.copyWith(
-              backgroundColor: Colors.yellowAccent.withOpacity(0.35),
+              backgroundColor: Colors.yellowAccent.withAlpha(
+                (0.35 * 255).round(),
+              ),
               color: Colors.black,
             ),
           ),
         );
         last = m.end;
       }
-      if (last < text.length)
+      if (last < text.length) {
         spans.add(TextSpan(text: text.substring(last), style: defaultStyle));
+      }
 
       return RichText(
         text: TextSpan(children: spans),
@@ -121,20 +129,20 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
     if (uid == null) return;
     final now = DateTime.now();
     if (_markInProgress) return;
-    if (_lastMarked != null && now.difference(_lastMarked!) < _markCooldown)
+    if (_lastMarked != null && now.difference(_lastMarked!) < _markCooldown) {
       return;
+    }
     _markInProgress = true;
-    // ignore: avoid_print
-    print(
+    appLogger.d(
       '[_MensajeriaScreenState] _marcarLeidos() called for uid=$uid hijoId=${widget.hijoId}',
     );
     try {
       final updated = await _service.markReadForUser(widget.hijoId, uid);
-      // ignore: avoid_print
-      print('[_MensajeriaScreenState] markReadForUser updated=$updated docs');
-    } catch (e) {
-      // ignore: avoid_print
-      print('[_MensajeriaScreenState] markReadForUser error: $e');
+      appLogger.d(
+        '[_MensajeriaScreenState] markReadForUser updated=$updated docs',
+      );
+    } catch (e, st) {
+      appLogger.e('[_MensajeriaScreenState] markReadForUser error: $e', e, st);
     } finally {
       _lastMarked = DateTime.now();
       _markInProgress = false;
@@ -146,14 +154,17 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
     final text = _controller.text.trim();
     if (uid == null) return;
 
+    final messenger = ScaffoldMessenger.of(context);
+
     // Enforce that every message contains text. Previously attachments
     // could be sent without text; now every message (plain, with
     // attachment, or request) must include some textual content.
     if (text.isEmpty) {
-      if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Debes escribir un mensaje')));
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Debes escribir un mensaje')),
+        );
+      }
       return;
     }
 
@@ -176,15 +187,13 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
         _attachedFileUrl = null;
         _isRequest = false;
       });
-      if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Mensaje enviado')));
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: Text('Mensaje enviado')));
+      }
     } catch (e) {
-      if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error al enviar: $e')));
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: Text('Error al enviar: $e')));
+      }
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -197,6 +206,7 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
   }) async {
     final uid = _uid;
     if (uid == null) return;
+    final messenger = ScaffoldMessenger.of(context);
     try {
       await _service.respond(
         mensajeId: mensajeId,
@@ -204,26 +214,26 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
         action: action,
         comment: comment,
       );
-      if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Respuesta enviada')));
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: Text('Respuesta enviada')));
+      }
     } catch (e) {
-      // ignore: avoid_print
-      print('Error en _respondToRequest: $e');
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
+      appLogger.e('Error en _respondToRequest: $e', e);
+      if (mounted) {
+        messenger.showSnackBar(
           SnackBar(
             content: Text(
               'Error al responder. Revisa la consola para más detalles.',
             ),
           ),
         );
+      }
     }
   }
 
   Future<void> _pickAndUploadFile() async {
     setState(() => _uploading = true);
+    final messenger = ScaffoldMessenger.of(context);
     try {
       final result = await FilePicker.platform.pickFiles(
         allowMultiple: false,
@@ -238,25 +248,23 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
       if (picked.path != null) {
         file = File(picked.path!);
         fileName = path_pkg.basename(picked.path!);
-        // ignore: avoid_print
-        print('[Mensajeria] picked localPath=${picked.path}');
+        appLogger.d('[Mensajeria] picked localPath=${picked.path}');
       } else if (picked.bytes != null) {
         final tempDir = await getTemporaryDirectory();
         final tempPath =
             '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}_$fileName';
         file = File(tempPath);
         await file.writeAsBytes(picked.bytes!);
-        // ignore: avoid_print
-        print('[Mensajeria] wrote bytes to tempPath=$tempPath');
+        appLogger.d('[Mensajeria] wrote bytes to tempPath=$tempPath');
       } else {
-        // ignore: avoid_print
-        print('[Mensajeria] picked file has no path and no bytes');
-        if (mounted)
-          ScaffoldMessenger.of(context).showSnackBar(
+        appLogger.w('[Mensajeria] picked file has no path and no bytes');
+        if (mounted) {
+          messenger.showSnackBar(
             SnackBar(
               content: Text('No se pudo acceder al archivo seleccionado'),
             ),
           );
+        }
         return;
       }
 
@@ -267,15 +275,13 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
       if (!_forcePutData) {
         try {
           // Try putFile first (native stream). If that fails, fallback to putData.
-          // ignore: avoid_print
-          print('[Mensajeria] attempting putFile upload');
+          appLogger.d('[Mensajeria] attempting putFile upload');
           final uploadTask = ref.putFile(file);
           uploadTask.snapshotEvents.listen((s) {
             final progress =
                 (s.bytesTransferred / (s.totalBytes == 0 ? 1 : s.totalBytes)) *
                 100;
-            // ignore: avoid_print
-            print(
+            appLogger.v(
               '[Mensajeria] upload progress (putFile): ${progress.toStringAsFixed(1)}%',
             );
           });
@@ -287,19 +293,15 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
               _attachedFileName = fileName;
               _attachedFileUrl = downloadUrl;
             });
-            ScaffoldMessenger.of(context).showSnackBar(
+            messenger.showSnackBar(
               SnackBar(content: Text('Archivo adjuntado: $fileName')),
             );
           }
         } catch (e, st) {
-          // ignore: avoid_print
-          print('[Mensajeria] putFile error: $e');
-          // ignore: avoid_print
-          print(st);
+          appLogger.e('[Mensajeria] putFile error: $e', e, st);
           // Fallback to putData
           try {
-            // ignore: avoid_print
-            print('[Mensajeria] falling back to putData');
+            appLogger.d('[Mensajeria] falling back to putData');
             final bytes = await file.readAsBytes();
             final uploadTask = ref.putData(bytes);
             uploadTask.snapshotEvents.listen((s) {
@@ -307,8 +309,7 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
                   (s.bytesTransferred /
                       (s.totalBytes == 0 ? 1 : s.totalBytes)) *
                   100;
-              // ignore: avoid_print
-              print(
+              appLogger.v(
                 '[Mensajeria] upload progress (putData): ${progress.toStringAsFixed(1)}%',
               );
             });
@@ -320,17 +321,14 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
                 _attachedFileName = fileName;
                 _attachedFileUrl = downloadUrl;
               });
-              ScaffoldMessenger.of(context).showSnackBar(
+              messenger.showSnackBar(
                 SnackBar(content: Text('Archivo adjuntado: $fileName')),
               );
             }
           } catch (e2, st2) {
-            // ignore: avoid_print
-            print('[Mensajeria] putData error: $e2');
-            // ignore: avoid_print
-            print(st2);
+            appLogger.e('[Mensajeria] putData error: $e2', e2, st2);
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              messenger.showSnackBar(
                 SnackBar(content: Text('Error al subir archivo: $e2')),
               );
               setState(() {
@@ -343,16 +341,16 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
       } else {
         // Force using putData (debug mode)
         try {
-          // ignore: avoid_print
-          print('[Mensajeria] forcePutData enabled: using putData directly');
+          appLogger.d(
+            '[Mensajeria] forcePutData enabled: using putData directly',
+          );
           final bytes = await file.readAsBytes();
           final uploadTask = ref.putData(bytes);
           uploadTask.snapshotEvents.listen((s) {
             final progress =
                 (s.bytesTransferred / (s.totalBytes == 0 ? 1 : s.totalBytes)) *
                 100;
-            // ignore: avoid_print
-            print(
+            appLogger.v(
               '[Mensajeria] upload progress (putData): ${progress.toStringAsFixed(1)}%',
             );
           });
@@ -364,17 +362,14 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
               _attachedFileName = fileName;
               _attachedFileUrl = downloadUrl;
             });
-            ScaffoldMessenger.of(context).showSnackBar(
+            messenger.showSnackBar(
               SnackBar(content: Text('Archivo adjuntado: $fileName')),
             );
           }
         } catch (e2, st2) {
-          // ignore: avoid_print
-          print('[Mensajeria] putData error (force mode): $e2');
-          // ignore: avoid_print
-          print(st2);
+          appLogger.e('[Mensajeria] putData error (force mode): $e2', e2, st2);
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
+            messenger.showSnackBar(
               SnackBar(content: Text('Error al subir archivo: $e2')),
             );
             setState(() {
@@ -384,13 +379,13 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
           }
         }
       }
-    } catch (e) {
-      // ignore: avoid_print
-      print('Error uploading file: $e');
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
+    } catch (e, st) {
+      appLogger.e('Error uploading file: $e', e, st);
+      if (mounted) {
+        messenger.showSnackBar(
           SnackBar(content: Text('Error al adjuntar archivo: $e')),
         );
+      }
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -499,8 +494,11 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   final err = snapshot.error;
-                  // ignore: avoid_print
-                  print('Mensajeria stream error: $err');
+                  appLogger.e('Mensajeria stream error: $err', err);
+                  if (err is FirebaseException &&
+                      err.code == 'permission-denied') {
+                    return const FallbackHijosWidget();
+                  }
                   return Center(
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
@@ -535,8 +533,9 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
                     ),
                   );
                 }
-                if (!snapshot.hasData)
+                if (!snapshot.hasData) {
                   return Center(child: CircularProgressIndicator());
+                }
 
                 final items = snapshot.data!;
                 // Apply client-side search filtering (case-insensitive)
@@ -559,13 +558,14 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
                   }).toList();
                 }
                 if (mounted) _marcarLeidos();
-                if (filtered.isEmpty)
+                if (filtered.isEmpty) {
                   return Center(
                     child: Text(
                       'No hay mensajes aún',
                       style: TextStyle(color: Colors.white70),
                     ),
                   );
+                }
 
                 return ListView.builder(
                   reverse: true,
@@ -587,12 +587,11 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
                       );
                     } catch (e, st) {
                       // Guard against a single message crashing the entire list
-                      // ignore: avoid_print
-                      print(
+                      appLogger.e(
                         '[Mensajeria] MessageTile build error for id=${m.id}: $e',
+                        e,
+                        st,
                       );
-                      // ignore: avoid_print
-                      print(st);
                       return Padding(
                         padding: const EdgeInsets.all(8.0),
                         child: Container(
@@ -711,6 +710,9 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
                         ),
                         ElevatedButton(
                           onPressed: _sending ? null : _sendMessage,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blueAccent,
+                          ),
                           child: _sending
                               ? SizedBox(
                                   width: 16,
@@ -720,9 +722,6 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
                                   ),
                                 )
                               : Icon(Icons.send),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blueAccent,
-                          ),
                         ),
                       ],
                     ),
@@ -741,13 +740,14 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
     final df = DateFormat('yyyy-MM-dd HH:mm:ss');
     final uid = _uid;
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Generando PDF...')));
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+
+    messenger.showSnackBar(SnackBar(content: Text('Generando PDF...')));
 
     try {
       // Resolve user display names in batch to show readable names in PDF.
-      Future<Map<String, String>> _resolveUserNamesForUids(
+      Future<Map<String, String>> resolveUserNamesForUids(
         Set<String> uids,
       ) async {
         final Map<String, String> names = {};
@@ -762,10 +762,12 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
               final data = snap.data();
               String name = '';
               if (data != null) {
-                if (data.containsKey('displayName'))
+                if (data.containsKey('displayName')) {
                   name = (data['displayName'] ?? '').toString();
-                if (name.isEmpty && data.containsKey('nombre'))
+                }
+                if (name.isEmpty && data.containsKey('nombre')) {
                   name = (data['nombre'] ?? '').toString();
+                }
               }
               if (name.isNotEmpty) names[uid] = name;
             }
@@ -820,7 +822,7 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
         }
       }
 
-      final Map<String, String> resolvedNames = await _resolveUserNamesForUids(
+      final Map<String, String> resolvedNames = await resolveUserNamesForUids(
         allUids,
       );
 
@@ -863,9 +865,12 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
           for (final r in results) {
             if (r != null) resolvedNames[r.key] = r.value;
           }
-        } catch (e) {
-          // ignore: avoid_print
-          print('Fallback name resolution from mensajes failed: $e');
+        } catch (e, st) {
+          appLogger.w(
+            'Fallback name resolution from mensajes failed: $e',
+            e,
+            st,
+          );
         }
       }
 
@@ -1018,7 +1023,7 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
                   final who = entry.key == uid
                       ? (currentDisplayName != null &&
                                 currentDisplayName.isNotEmpty
-                            ? '${currentDisplayName} (Tú)'
+                            ? '$currentDisplayName (Tú)'
                             : 'Tú')
                       : (resolvedNames.containsKey(entry.key)
                             ? resolvedNames[entry.key]!
@@ -1045,7 +1050,7 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
                   final responderName = responderId == uid
                       ? (currentDisplayName != null &&
                                 currentDisplayName.isNotEmpty
-                            ? '${currentDisplayName} (Tú)'
+                            ? '$currentDisplayName (Tú)'
                             : 'Tú')
                       : (resolvedNames.containsKey(responderId)
                             ? resolvedNames[responderId]!
@@ -1077,7 +1082,7 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
 
                   // Format: Nombre (Tú) "Etiqueta" el 2025-11-20 13:39:23
                   widgets.add(
-                    pw.Text('- ${responderName} "${actionLabel}" el ${when}'),
+                    pw.Text('- $responderName "$actionLabel" el $when'),
                   );
                 }
               }
@@ -1111,9 +1116,8 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
           final target = File('${downloadsDir.path}/$fileName');
           await target.writeAsBytes(bytes, flush: true);
         }
-      } catch (e) {
-        // ignore: avoid_print
-        print('No se pudo copiar a Downloads: $e');
+      } catch (e, st) {
+        appLogger.w('No se pudo copiar a Downloads: $e', e, st);
       }
 
       // For Android 10+ (and robust behavior on Android 11+), attempt to
@@ -1128,16 +1132,14 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
             'fileName': fileName,
             'mimeType': 'application/pdf',
           });
-        } catch (e) {
-          // ignore: avoid_print
-          print('saveToDownloads platform call failed: $e');
+        } catch (e, st) {
+          appLogger.w('saveToDownloads platform call failed: $e', e, st);
         }
       }
 
       // open in-app using local viewer
       if (!mounted) return;
-      Navigator.push(
-        context,
+      navigator.push(
         MaterialPageRoute(
           builder: (_) =>
               VisorPdfLocalScreen(localPath: tempPath, nombre: fileName),
@@ -1147,24 +1149,22 @@ class _MensajeriaScreenState extends State<MensajeriaScreen> {
       // also open with external app
       try {
         await OpenFilex.open(tempPath);
-      } catch (e) {
-        // ignore: avoid_print
-        print('OpenFilex failed: $e');
+      } catch (e, st) {
+        appLogger.w('OpenFilex failed: $e', e, st);
       }
 
-      if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('PDF generado: $fileName')));
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('PDF generado: $fileName')),
+        );
+      }
     } catch (e, st) {
-      // ignore: avoid_print
-      print('Error generando PDF: $e');
-      // ignore: avoid_print
-      print(st);
-      if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error al generar PDF: $e')));
+      appLogger.e('Error generando PDF: $e', e, st);
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Error al generar PDF: $e')),
+        );
+      }
     }
   }
 }

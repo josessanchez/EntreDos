@@ -2,7 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:entredos/screens/salud/salud_screen.dart';
 import 'package:entredos/widgets/pagos/vista_pagos.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
+import 'package:entredos/utils/app_logger.dart';
 
 import 'academico_screen.dart';
 import 'calendario_screen.dart';
@@ -75,7 +77,7 @@ class _DashboardButtonState extends State<DashboardButton>
               borderRadius: BorderRadius.circular(14),
               boxShadow: [
                 BoxShadow(
-                  color: widget.color.withOpacity(0.15),
+                  color: widget.color.withAlpha((0.15 * 255).round()),
                   blurRadius: 6,
                   offset: Offset(0, 3),
                 ),
@@ -199,7 +201,6 @@ class _IndexScreenState extends State<IndexScreen> {
   @override
   Widget build(BuildContext context) {
     final bool sinHijos = hijos.isEmpty;
-    final bool variosHijos = hijos.length > 1;
 
     return Scaffold(
       backgroundColor: Color(0xFF0D1B2A), // Fondo general azul oscuro
@@ -207,23 +208,94 @@ class _IndexScreenState extends State<IndexScreen> {
           ? Center(child: CircularProgressIndicator())
           : Padding(
               padding: const EdgeInsets.fromLTRB(20, 40, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: 8),
-                  Text(
-                    'Tu espacio seguro para gestionar la custodia',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontFamily: 'Montserrat',
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: 8),
+                    Text(
+                      'Tu espacio seguro para gestionar la custodia',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontFamily: 'Montserrat',
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 28),
-                  if (sinHijos)
-                    Center(
-                      child: Container(
+                    SizedBox(height: 28),
+                    if (sinHijos)
+                      Center(
+                        child: Container(
+                          margin: EdgeInsets.only(bottom: 24),
+                          padding: EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            gradient: LinearGradient(
+                              colors: [Color(0xFF3A86FF), Color(0xFFFF5E9D)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                          ),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Color(0xFF0D1B2A),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            padding: EdgeInsets.all(20),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.child_care,
+                                  size: 64,
+                                  color: Colors.white,
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  '¡Bienvenido a EntreDos!\nAñade a tu primer hijo/a para empezar.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontFamily: 'Montserrat',
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                SizedBox(height: 20),
+                                ElevatedButton(
+                                  onPressed: () async {
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => HijosScreen(),
+                                      ),
+                                    );
+                                    cargarHijos();
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    foregroundColor: Colors.black,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 24,
+                                      vertical: 14,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Añadir hijo/a',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontFamily: 'Montserrat',
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (!sinHijos)
+                      Container(
                         margin: EdgeInsets.only(bottom: 24),
                         padding: EdgeInsets.all(2),
                         decoration: BoxDecoration(
@@ -239,97 +311,93 @@ class _IndexScreenState extends State<IndexScreen> {
                             color: Color(0xFF0D1B2A),
                             borderRadius: BorderRadius.circular(14),
                           ),
-                          padding: EdgeInsets.all(20),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.child_care,
-                                size: 64,
-                                color: Colors.white,
-                              ),
-                              SizedBox(height: 16),
-                              Text(
-                                '¡Bienvenido a EntreDos!\nAñade a tu primer hijo/a para empezar.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontFamily: 'Montserrat',
-                                  color: Colors.white,
-                                ),
-                              ),
-                              SizedBox(height: 20),
-                              ElevatedButton(
-                                onPressed: () async {
-                                  await Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => HijosScreen(),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                ...hijos.map((hijo) {
+                                  final nombre = hijo['nombre'] ?? 'Sin nombre';
+                                  final seleccionado =
+                                      hijo['id'] == hijoIdSeleccionado;
+
+                                  return GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        hijoIdSeleccionado = hijo['id'];
+                                        hijoNombreSeleccionado = nombre;
+                                      });
+                                    },
+                                    child: Column(
+                                      children: [
+                                        Container(
+                                          margin: EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                          ),
+                                          padding: EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            gradient: seleccionado
+                                                ? LinearGradient(
+                                                    colors: [
+                                                      Color(0xFF5C2D91),
+                                                      Color(0xFFC76DFF),
+                                                    ],
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                  )
+                                                : null,
+                                            color: seleccionado
+                                                ? null
+                                                : Color(0xFF1B263B),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withAlpha(
+                                                  (0.7 * 255).round(),
+                                                ),
+                                                blurRadius: 4,
+                                                offset: Offset(0, 2),
+                                              ),
+                                            ],
+                                          ),
+                                          child: CircleAvatar(
+                                            radius:
+                                                MediaQuery.of(
+                                                  context,
+                                                ).size.width *
+                                                0.12,
+                                            backgroundImage: NetworkImage(
+                                              hijo['fotoUrl'],
+                                            ),
+                                            backgroundColor: Colors.white,
+                                          ),
+                                        ),
+                                        SizedBox(height: 6),
+                                        Text(
+                                          nombre,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontFamily: 'Montserrat',
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   );
-                                  cargarHijos();
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: Colors.black,
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 14,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: Text(
-                                  'Añadir hijo/a',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontFamily: 'Montserrat',
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (!sinHijos)
-                    Container(
-                      margin: EdgeInsets.only(bottom: 24),
-                      padding: EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: LinearGradient(
-                          colors: [Color(0xFF3A86FF), Color(0xFFFF5E9D)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Color(0xFF0D1B2A),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              ...hijos.map((hijo) {
-                                final nombre = hijo['nombre'] ?? 'Sin nombre';
-                                final edad = hijo['edad'] ?? '';
-                                final seleccionado =
-                                    hijo['id'] == hijoIdSeleccionado;
-
-                                return GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      hijoIdSeleccionado = hijo['id'];
-                                      hijoNombreSeleccionado = nombre;
-                                    });
+                                }),
+                                GestureDetector(
+                                  onTap: () async {
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => HijosScreen(),
+                                      ),
+                                    );
+                                    cargarHijos();
                                   },
                                   child: Column(
                                     children: [
@@ -340,44 +408,17 @@ class _IndexScreenState extends State<IndexScreen> {
                                         padding: EdgeInsets.all(4),
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
-                                          gradient: seleccionado
-                                              ? LinearGradient(
-                                                  colors: [
-                                                    Color(0xFF5C2D91),
-                                                    Color(0xFFC76DFF),
-                                                  ],
-                                                  begin: Alignment.topLeft,
-                                                  end: Alignment.bottomRight,
-                                                )
-                                              : null,
-                                          color: seleccionado
-                                              ? null
-                                              : Color(0xFF1B263B),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withOpacity(
-                                                0.2,
-                                              ),
-                                              blurRadius: 4,
-                                              offset: Offset(0, 2),
-                                            ),
-                                          ],
+                                          color: Colors.white,
                                         ),
-                                        child: CircleAvatar(
-                                          radius:
-                                              MediaQuery.of(
-                                                context,
-                                              ).size.width *
-                                              0.12,
-                                          backgroundImage: NetworkImage(
-                                            hijo['fotoUrl'],
-                                          ),
-                                          backgroundColor: Colors.white,
+                                        child: Icon(
+                                          Icons.add,
+                                          size: 28,
+                                          color: Color(0xFF0D1B2A),
                                         ),
                                       ),
                                       SizedBox(height: 6),
                                       Text(
-                                        nombre,
+                                        'Añadir',
                                         style: TextStyle(
                                           fontSize: 13,
                                           fontFamily: 'Montserrat',
@@ -386,214 +427,175 @@ class _IndexScreenState extends State<IndexScreen> {
                                       ),
                                     ],
                                   ),
-                                );
-                              }),
-                              GestureDetector(
-                                onTap: () async {
-                                  await Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => HijosScreen(),
-                                    ),
-                                  );
-                                  cargarHijos();
-                                },
-                                child: Column(
-                                  children: [
-                                    Container(
-                                      margin: EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                      ),
-                                      padding: EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.white,
-                                      ),
-                                      child: Icon(
-                                        Icons.add,
-                                        size: 28,
-                                        color: Color(0xFF0D1B2A),
-                                      ),
-                                    ),
-                                    SizedBox(height: 6),
-                                    Text(
-                                      'Añadir',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontFamily: 'Montserrat',
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ],
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
+                    Text(
+                      'Accede rápidamente a tus secciones:',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Montserrat',
+                        color: Colors.white,
+                      ),
                     ),
-                  Text(
-                    'Accede rápidamente a tus secciones:',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'Montserrat',
-                      color: Colors.white,
+                    SizedBox(height: 16),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 1,
+                      children: [
+                        DashboardButton(
+                          icon: Icons.badge,
+                          label: 'Identificación',
+                          description:
+                              'Gestiona los archivos importantes del menor',
+                          color: const Color.fromARGB(255, 2, 191, 238),
+                          onPressed: () {
+                            if (sinHijos) {
+                              mostrarMensajeSeleccion(context);
+                              return;
+                            }
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => IdentificacionListScreen(
+                                  hijoId: hijoIdSeleccionado!,
+                                  hijoNombre: hijoNombreSeleccionado ?? '',
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        DashboardButton(
+                          icon: Icons.calendar_today,
+                          label: 'Calendario',
+                          description:
+                              'Consulta los eventos importantes del menor',
+                          color: const Color.fromARGB(255, 250, 143, 55),
+                          onPressed: () {
+                            if (sinHijos) {
+                              mostrarMensajeSeleccion(context);
+                              return;
+                            }
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => CalendarioScreen(
+                                  hijoId: hijoIdSeleccionado!,
+                                  hijoNombre: hijoNombreSeleccionado ?? '',
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        DashboardButton(
+                          icon: Icons.attach_money,
+                          label: 'Pagos',
+                          description: 'Gestiona los gastos entre progenitores',
+                          color: Colors.green,
+                          onPressed: () {
+                            if (sinHijos) {
+                              mostrarMensajeSeleccion(context);
+                              return;
+                            }
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    VistaPagos(hijoID: hijoIdSeleccionado!),
+                              ),
+                            );
+                          },
+                        ),
+                        DashboardButton(
+                          icon: Icons.school,
+                          label: 'Académico',
+                          description:
+                              'Sigue el progreso escolar y notas del menor',
+                          color: Colors.purple,
+                          onPressed: () {
+                            if (sinHijos) {
+                              mostrarMensajeSeleccion(context);
+                              return;
+                            }
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => AcademicoScreen(
+                                  hijoID: hijoIdSeleccionado!,
+                                  nombreHijo: hijoNombreSeleccionado!,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        DashboardButton(
+                          icon: Icons.child_care,
+                          label: 'Gestión de Hijos',
+                          description:
+                              'Añade hijos a tu app para empezar a gestionarlos',
+                          color: const Color.fromARGB(255, 252, 255, 98),
+                          highlight: sinHijos, // nuevo parámetro visual
+                          onPressed: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => HijosScreen()),
+                            );
+                            cargarHijos();
+                          },
+                        ),
+                        DashboardButton(
+                          icon: Icons.health_and_safety,
+                          label: 'Salud',
+                          description: 'Espacio de citas y salud de tus hijos',
+                          color: const Color.fromARGB(255, 240, 5, 5),
+                          onPressed: () {
+                            if (sinHijos) {
+                              mostrarMensajeSeleccion(context);
+                              return;
+                            }
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => SaludScreen(
+                                  hijoId: hijoIdSeleccionado!,
+                                  hijoNombre: hijoNombreSeleccionado!,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        DashboardButton(
+                          icon: Icons.message,
+                          label: 'Mensajería',
+                          description:
+                              'Enviar peticiones y mensajes relacionados al menor',
+                          color: Colors.teal,
+                          onPressed: () {
+                            if (sinHijos) {
+                              mostrarMensajeSeleccion(context);
+                              return;
+                            }
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => MensajeriaScreen(
+                                  hijoId: hijoIdSeleccionado!,
+                                  hijoNombre: hijoNombreSeleccionado ?? '',
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
-                  ),
-                  SizedBox(height: 16),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 1,
-                    children: [
-                      DashboardButton(
-                        icon: Icons.badge,
-                        label: 'Identificación',
-                        description:
-                            'Gestiona los archivos importantes del menor',
-                        color: const Color.fromARGB(255, 2, 191, 238),
-                        onPressed: () {
-                          if (sinHijos) {
-                            mostrarMensajeSeleccion(context);
-                            return;
-                          }
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => IdentificacionListScreen(
-                                hijoId: hijoIdSeleccionado!,
-                                hijoNombre: hijoNombreSeleccionado ?? '',
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      DashboardButton(
-                        icon: Icons.calendar_today,
-                        label: 'Calendario',
-                        description:
-                            'Consulta los eventos importantes del menor',
-                        color: const Color.fromARGB(255, 250, 143, 55),
-                        onPressed: () {
-                          if (sinHijos) {
-                            mostrarMensajeSeleccion(context);
-                            return;
-                          }
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => CalendarioScreen(
-                                hijoId: hijoIdSeleccionado!,
-                                hijoNombre: hijoNombreSeleccionado ?? '',
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      DashboardButton(
-                        icon: Icons.attach_money,
-                        label: 'Pagos',
-                        description: 'Gestiona los gastos entre progenitores',
-                        color: Colors.green,
-                        onPressed: () {
-                          if (sinHijos) {
-                            mostrarMensajeSeleccion(context);
-                            return;
-                          }
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  VistaPagos(hijoID: hijoIdSeleccionado!),
-                            ),
-                          );
-                        },
-                      ),
-                      DashboardButton(
-                        icon: Icons.school,
-                        label: 'Académico',
-                        description:
-                            'Sigue el progreso escolar y notas del menor',
-                        color: Colors.purple,
-                        onPressed: () {
-                          if (sinHijos) {
-                            mostrarMensajeSeleccion(context);
-                            return;
-                          }
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => AcademicoScreen(
-                                hijoID: hijoIdSeleccionado!,
-                                nombreHijo: hijoNombreSeleccionado!,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      DashboardButton(
-                        icon: Icons.child_care,
-                        label: 'Gestión de Hijos',
-                        description:
-                            'Añade hijos a tu app para empezar a gestionarlos',
-                        color: const Color.fromARGB(255, 252, 255, 98),
-                        highlight: sinHijos, // nuevo parámetro visual
-                        onPressed: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => HijosScreen()),
-                          );
-                          cargarHijos();
-                        },
-                      ),
-                      DashboardButton(
-                        icon: Icons.health_and_safety,
-                        label: 'Salud',
-                        description: 'Espacio de citas y salud de tus hijos',
-                        color: const Color.fromARGB(255, 240, 5, 5),
-                        onPressed: () {
-                          if (sinHijos) {
-                            mostrarMensajeSeleccion(context);
-                            return;
-                          }
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => SaludScreen(
-                                hijoId: hijoIdSeleccionado!,
-                                hijoNombre: hijoNombreSeleccionado!,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      DashboardButton(
-                        icon: Icons.message,
-                        label: 'Mensajería',
-                        description:
-                            'Enviar peticiones y mensajes relacionados al menor',
-                        color: Colors.teal,
-                        onPressed: () {
-                          if (sinHijos) {
-                            mostrarMensajeSeleccion(context);
-                            return;
-                          }
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => MensajeriaScreen(
-                                hijoId: hijoIdSeleccionado!,
-                                hijoNombre: hijoNombreSeleccionado ?? '',
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+                  ],
+                ),
+              ), // close SingleChildScrollView
+            ), // close Padding
     );
   }
 
@@ -633,8 +635,46 @@ class _IndexScreenState extends State<IndexScreen> {
         hijos = lista;
         cargando = false;
       });
-    } catch (e) {
-      print('⚠️ Error al cargar hijos: $e');
+    } catch (e, st) {
+      appLogger.w('⚠️ Error al cargar hijos: $e', e, st);
+      // Fallback: if Firestore query is blocked by permissions, call server-side callable
+      final err = e.toString();
+      if (err.contains('permission-denied') ||
+          err.contains('PERMISSION_DENIED')) {
+        try {
+          final fn = FirebaseFunctions.instance;
+          final callable = fn.httpsCallable('listHijosForUid');
+          final resp = await callable.call(<String, dynamic>{'uid': usuarioID});
+          final items = resp.data != null && resp.data['items'] is List
+              ? List.from(resp.data['items'])
+              : <dynamic>[];
+
+          final lista2 = items.map((it) {
+            final m = it is Map
+                ? Map<String, dynamic>.from(it['data'] ?? {})
+                : <String, dynamic>{};
+            return {
+              'id': it['id']?.toString() ?? '',
+              'nombre': m['nombre']?.toString() ?? 'Sin nombre',
+              'fotoUrl': m['fotoUrl']?.toString() ?? '',
+            };
+          }).toList();
+
+          if (hijoIdSeleccionado == null && lista2.isNotEmpty) {
+            hijoIdSeleccionado = lista2.first['id'];
+            hijoNombreSeleccionado = lista2.first['nombre'];
+          }
+
+          setState(() {
+            hijos = lista2;
+            cargando = false;
+          });
+          return;
+        } catch (e2, st2) {
+          appLogger.w('⚠️ Fallback callable failed: $e2', e2, st2);
+        }
+      }
+
       setState(() => cargando = false);
     }
   }

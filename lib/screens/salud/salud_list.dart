@@ -4,6 +4,7 @@ import 'package:entredos/screens/salud/salud_upload.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:entredos/widgets/fallback_body.dart';
 
 class SaludListScreen extends StatefulWidget {
   final String hijoId;
@@ -86,6 +87,12 @@ class _SaludListScreenState extends State<SaludListScreen> {
                 }
 
                 if (snapshot.hasError) {
+                  final err = snapshot.error;
+                  if (err is FirebaseException &&
+                      err.code == 'permission-denied') {
+                    return const FallbackHijosWidget();
+                  }
+
                   return const Center(
                     child: Text(
                       "❌ Error cargando datos de salud",

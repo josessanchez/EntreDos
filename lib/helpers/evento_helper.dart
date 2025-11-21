@@ -14,6 +14,7 @@ class EventoHelper {
   }) async {
     // Reuse the existing FormularioEvento dialog so attachments and upload
     // behavior match the full calendar screen.
+    final messenger = ScaffoldMessenger.of(context);
     final resultado = await showDialog<Evento>(
       context: context,
       builder: (_) => FormularioEvento(
@@ -27,7 +28,7 @@ class EventoHelper {
       // The form already saved the event to Firestore and returned the Evento.
       // Just call the onGuardado callback and notify the user.
       onGuardado();
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.black87,

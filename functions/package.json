@@ -9,4 +9,8 @@
     "firebase-functions": "^4.4.0",
     "google-auth-library": "^8.9.0"
   }
+  ,
+  "scripts": {
+    "deploy": "firebase deploy --only functions"
+  }
 }

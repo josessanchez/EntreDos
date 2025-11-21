@@ -7,6 +7,7 @@ import 'package:table_calendar/table_calendar.dart';
 import '../helpers/documento_helper.dart';
 import '../models/evento_model.dart';
 import '../widgets/formulario_evento.dart';
+import 'package:entredos/widgets/fallback_body.dart';
 
 class CalendarioScreen extends StatefulWidget {
   final String hijoId;
@@ -26,6 +27,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
   DateTime focusedDay = DateTime.now();
   DateTime? selectedDay;
   Map<DateTime, List<Evento>> eventosPorDia = {};
+  bool _showFallback = false;
 
   final List<String> tiposEvento = ['Actividad', 'Cumpleaños', 'Médico'];
   String? tipoSeleccionado;
@@ -33,6 +35,13 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
   @override
   Widget build(BuildContext context) {
     final fechasFiltradas = fechasPorTipoSeleccionado();
+
+    if (_showFallback) {
+      return Scaffold(
+        appBar: AppBar(title: Text('Calendario de ${widget.hijoNombre}')),
+        body: const FallbackHijosWidget(),
+      );
+    }
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -197,6 +206,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                 ),
               ),
               onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
                 final evento = await showDialog<Evento>(
                   context: context,
                   builder: (_) => FormularioEvento(
@@ -207,7 +217,8 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
 
                 if (evento != null) {
                   cargarEventos();
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  if (!mounted) return;
+                  messenger.showSnackBar(
                     SnackBar(
                       behavior: SnackBarBehavior.floating,
                       backgroundColor: Colors.black87,
@@ -235,27 +246,40 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
   }
 
   Future<void> cargarEventos() async {
-    final snapshot = await FirebaseFirestore.instance
-        .collection('eventos')
-        .where('hijoId', isEqualTo: widget.hijoId)
-        .get();
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('eventos')
+          .where('hijoId', isEqualTo: widget.hijoId)
+          .get();
 
-    Map<DateTime, List<Evento>> mapa = {};
+      Map<DateTime, List<Evento>> mapa = {};
 
-    for (var doc in snapshot.docs) {
-      final evento = Evento.fromSnapshot(doc);
-      final fechaClave = DateTime(
-        evento.fecha.year,
-        evento.fecha.month,
-        evento.fecha.day,
-      );
-      mapa.putIfAbsent(fechaClave, () => []);
-      mapa[fechaClave]!.add(evento);
+      for (var doc in snapshot.docs) {
+        final evento = Evento.fromSnapshot(doc);
+        final fechaClave = DateTime(
+          evento.fecha.year,
+          evento.fecha.month,
+          evento.fecha.day,
+        );
+        mapa.putIfAbsent(fechaClave, () => []);
+        mapa[fechaClave]!.add(evento);
+      }
+
+      if (!mounted) return;
+      setState(() {
+        eventosPorDia = mapa;
+        _showFallback = false;
+      });
+    } on FirebaseException catch (fe) {
+      if (fe.code == 'permission-denied') {
+        if (!mounted) return;
+        setState(() {
+          _showFallback = true;
+        });
+        return;
+      }
+      rethrow;
     }
-
-    setState(() {
-      eventosPorDia = mapa;
-    });
   }
 
   List<Evento> eventosDelDia(DateTime day) {
@@ -318,9 +342,9 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (_) => PageView.builder(
+      builder: (sheetContext) => PageView.builder(
         itemCount: eventos.length,
-        itemBuilder: (_, index) {
+        itemBuilder: (pageContext, index) {
           final evento = eventos[index];
           final nombreFallback =
               evento.documentoNombre ??
@@ -370,8 +394,9 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                       IconButton(
                         icon: Icon(Icons.edit, color: Colors.white70),
                         onPressed: () async {
+                          final navigator = Navigator.of(sheetContext);
                           final eventoEditado = await showDialog<Evento>(
-                            context: context,
+                            context: sheetContext,
                             builder: (_) => FormularioEvento(
                               hijoId: widget.hijoId,
                               hijoNombre: widget.hijoNombre,
@@ -380,8 +405,9 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                           );
 
                           if (eventoEditado != null) {
-                            Navigator.pop(context);
+                            navigator.pop();
                             await cargarEventos();
+                            if (!mounted) return;
                             mostrarEventosDelDia(eventosDelDia(evento.fecha));
                           }
                         },
@@ -389,9 +415,10 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                       IconButton(
                         icon: Icon(Icons.delete, color: Colors.redAccent),
                         onPressed: () async {
+                          final navigator = Navigator.of(sheetContext);
                           final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (_) => AlertDialog(
+                            context: sheetContext,
+                            builder: (dialogContext) => AlertDialog(
                               backgroundColor: Color(0xFF1B263B),
                               title: Text(
                                 'Eliminar evento',
@@ -417,14 +444,15 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                                     ),
                                   ),
                                   onPressed: () =>
-                                      Navigator.pop(context, false),
+                                      Navigator.pop(dialogContext, false),
                                 ),
                                 ElevatedButton(
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.redAccent,
                                     foregroundColor: Colors.white,
                                   ),
-                                  onPressed: () => Navigator.pop(context, true),
+                                  onPressed: () =>
+                                      Navigator.pop(dialogContext, true),
                                   child: Text(
                                     'Eliminar',
                                     style: TextStyle(fontFamily: 'Montserrat'),
@@ -439,8 +467,9 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                                 .doc(evento.id)
                                 .delete();
 
-                            Navigator.pop(context);
-                            cargarEventos();
+                            navigator.pop();
+                            await cargarEventos();
+                            if (!mounted) return;
                           }
                         },
                       ),
@@ -472,7 +501,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                     ),
                     style: TextButton.styleFrom(foregroundColor: Colors.white),
                     onPressed: () => DocumentoHelper.ver(
-                      context,
+                      sheetContext,
                       nombreFallback,
                       evento.documentoUrl!,
                     ),
@@ -485,7 +514,7 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                     ),
                     style: TextButton.styleFrom(foregroundColor: Colors.white),
                     onPressed: () => DocumentoHelper.descargar(
-                      context,
+                      sheetContext,
                       nombreFallback,
                       evento.documentoUrl!,
                     ),

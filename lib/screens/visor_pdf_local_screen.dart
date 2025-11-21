@@ -6,6 +6,7 @@ class VisorPdfLocalScreen extends StatelessWidget {
   final String nombre;
 
   const VisorPdfLocalScreen({
+    super.key,
     required this.localPath,
     required this.nombre,
   });

@@ -1,4 +1,5 @@
 // Replaced with clean implementation
+// ignore_for_file: use_build_context_synchronously
 import 'package:entredos/components/boton_anadir.dart';
 import 'package:entredos/components/tarjeta_evento.dart';
 import 'package:entredos/helpers/calendario_academico_helper.dart';
@@ -7,6 +8,7 @@ import 'package:entredos/helpers/documento_helper.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:entredos/utils/app_logger.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../models/evento_model.dart';
 import '../formulario_evento.dart';
@@ -160,14 +162,12 @@ class _VistaCalendarioState extends State<VistaCalendario> {
           final evento = eventos[index];
           final nombreFallback =
               evento['nombreArchivo'] ??
-              (evento['urlArchivo'] != null
-                  ? evento['urlArchivo']
-                        .toString()
-                        .split('/')
-                        .last
-                        .split('?')
-                        .first
-                  : null);
+              (evento['urlArchivo']
+                  ?.toString()
+                  .split('/')
+                  .last
+                  .split('?')
+                  .first);
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -212,6 +212,8 @@ class _VistaCalendarioState extends State<VistaCalendario> {
                       IconButton(
                         icon: const Icon(Icons.edit, color: Colors.white70),
                         onPressed: () async {
+                          final navigator = Navigator.of(context);
+                          final localContext = context;
                           final eventoModelo = Evento(
                             id: evento['id'] ?? '',
                             titulo: evento['titulo'] ?? '',
@@ -231,7 +233,7 @@ class _VistaCalendarioState extends State<VistaCalendario> {
                           );
 
                           final eventoEditado = await showDialog<Evento>(
-                            context: context,
+                            context: localContext,
                             builder: (_) => FormularioEvento(
                               hijoId: widget.hijoID,
                               hijoNombre: evento['hijoNombre'] ?? '',
@@ -241,7 +243,7 @@ class _VistaCalendarioState extends State<VistaCalendario> {
                           );
 
                           if (eventoEditado != null) {
-                            Navigator.pop(context);
+                            navigator.pop();
                             await cargarEventos();
                             mostrarEventosDelDia(
                               eventosDelDia(eventoModelo.fecha),
@@ -252,8 +254,10 @@ class _VistaCalendarioState extends State<VistaCalendario> {
                       IconButton(
                         icon: const Icon(Icons.delete, color: Colors.redAccent),
                         onPressed: () async {
+                          final navigator = Navigator.of(context);
+                          final localContext = context;
                           final confirm = await showDialog<bool>(
-                            context: context,
+                            context: localContext,
                             builder: (_) => AlertDialog(
                               backgroundColor: const Color(0xFF1B263B),
                               title: const Text(
@@ -271,14 +275,15 @@ class _VistaCalendarioState extends State<VistaCalendario> {
                                     style: TextStyle(color: Colors.white),
                                   ),
                                   onPressed: () =>
-                                      Navigator.pop(context, false),
+                                      Navigator.pop(localContext, false),
                                 ),
                                 ElevatedButton(
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.redAccent,
                                   ),
                                   child: const Text('Eliminar'),
-                                  onPressed: () => Navigator.pop(context, true),
+                                  onPressed: () =>
+                                      Navigator.pop(localContext, true),
                                 ),
                               ],
                             ),
@@ -286,7 +291,7 @@ class _VistaCalendarioState extends State<VistaCalendario> {
 
                           if (confirm == true) {
                             await DocumentoHelper.delete(
-                              context,
+                              localContext,
                               evento['id'],
                               nombreFallback ?? evento['titulo'] ?? 'documento',
                               evento['urlArchivo'],
@@ -294,7 +299,7 @@ class _VistaCalendarioState extends State<VistaCalendario> {
                               evento['usuarioID'] ?? '',
                               evento['coleccion'] ?? 'eventos',
                             );
-                            Navigator.pop(context);
+                            navigator.pop();
                             await cargarEventos();
                           }
                         },
@@ -385,9 +390,8 @@ class _VistaCalendarioState extends State<VistaCalendario> {
         proximos.add(entrada);
       }
 
-      // Diagnóstico: imprime cada entrada para verificar campos
-      // ignore: avoid_print
-      print(
+      // Diagnóstico: registra cada entrada para verificar campos
+      appLogger.d(
         '📅 ${entrada['titulo']} - ${entrada['fecha']} - ${entrada['coleccion']}',
       );
     }

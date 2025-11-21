@@ -17,7 +17,7 @@ class TarjetaPago extends StatelessWidget {
     final fechaLimite = PagoHelper.formatearFechaLimite(pago.fechaLimite);
 
     return Card(
-      color: color.withOpacity(0.1),
+      color: color.withAlpha((0.1 * 255).round()),
       margin: const EdgeInsets.only(bottom: 20),
       child: Padding(
         padding: const EdgeInsets.all(16),

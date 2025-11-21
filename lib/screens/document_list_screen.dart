@@ -3,32 +3,34 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_downloader/flutter_downloader.dart';
-import 'package:open_filex/open_filex.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/services.dart';
+// import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'visor_pdf_screen.dart';
+// removed unused imports: flutter_downloader, open_filex, visor_pdf_screen
 import 'package:diacritic/diacritic.dart';
 import 'package:entredos/helpers/documento_helper.dart';
+import 'package:entredos/widgets/fallback_body.dart';
+import 'package:entredos/utils/app_logger.dart';
 
 class DocumentListScreen extends StatefulWidget {
   final String hijoId;
   final String hijoNombre;
 
-  const DocumentListScreen({required this.hijoId, required this.hijoNombre});
+  const DocumentListScreen({
+    super.key,
+    required this.hijoId,
+    required this.hijoNombre,
+  });
 
   @override
   _DocumentListScreenState createState() => _DocumentListScreenState();
 }
 
 class _DocumentListScreenState extends State<DocumentListScreen> {
-  static const platform = MethodChannel('media_scanner');
-
   String busquedaTexto = '';
   String? filtroProgenitor;
   DateTime? fechaDesde;
@@ -99,8 +101,12 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
           filtroProgenitor == null || usuario == filtroProgenitor;
 
       return coincideTexto && dentroDeFechas && coincideProgenitor;
-    } catch (e) {
-      print('⚠️ Error aplicando filtro a documento: ${doc.id} → $e');
+    } catch (e, st) {
+      appLogger.w(
+        '⚠️ Error aplicando filtro a documento: ${doc.id} → $e',
+        e,
+        st,
+      );
       return false;
     }
   }
@@ -151,12 +157,14 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
                     ),
                   ),
                   onPressed: () async {
+                    final dialogContext = context;
                     final seleccion = await showDatePicker(
-                      context: context,
+                      context: dialogContext,
                       initialDate: fechaDesde ?? DateTime.now(),
                       firstDate: DateTime(2000),
                       lastDate: DateTime(2100),
                     );
+                    if (!mounted) return;
                     if (seleccion != null) {
                       setState(() => fechaDesde = seleccion);
                     }
@@ -192,12 +200,14 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
                     ),
                   ),
                   onPressed: () async {
+                    final dialogContext = context;
                     final seleccion = await showDatePicker(
-                      context: context,
+                      context: dialogContext,
                       initialDate: fechaHasta ?? DateTime.now(),
                       firstDate: DateTime(2000),
                       lastDate: DateTime(2100),
                     );
+                    if (!mounted) return;
                     if (seleccion != null) {
                       setState(() => fechaHasta = seleccion);
                     }
@@ -296,11 +306,10 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
   }
 
   Future<String?> mostrarNombreDocumento() async {
-    String? resultado;
-    await showDialog(
+    final result = await showDialog<String?>(
       context: context,
-      builder: (context) {
-        TextEditingController controller = TextEditingController();
+      builder: (dialogContext) {
+        final controller = TextEditingController();
         return AlertDialog(
           title: Text('Nombre del documento'),
           content: TextField(
@@ -312,23 +321,21 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
           actions: [
             TextButton(
               child: Text('Cancelar'),
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => Navigator.of(dialogContext).pop(null),
             ),
             ElevatedButton(
               child: Text('Guardar'),
-              onPressed: () {
-                resultado = controller.text;
-                Navigator.of(context).pop();
-              },
+              onPressed: () => Navigator.of(dialogContext).pop(controller.text),
             ),
           ],
         );
       },
     );
-    return resultado;
+    return result;
   }
 
   void eliminarDocumento(String docId, String nombre, String url) async {
+    final messenger = ScaffoldMessenger.of(context);
     try {
       final ref = FirebaseStorage.instance.refFromURL(url);
       await ref.delete();
@@ -336,7 +343,7 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
           .collection('documentos')
           .doc(docId)
           .delete();
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.black87,
@@ -354,7 +361,7 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
         ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.redAccent,
@@ -396,9 +403,10 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
   }
 
   void abrirEnNavegador(String url) async {
+    final messenger = ScaffoldMessenger.of(context);
     final uri = Uri.tryParse(url);
     if (url.isEmpty || uri == null || !uri.hasAbsolutePath) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.redAccent,
@@ -421,9 +429,9 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('❌ No se pudo abrir el archivo')));
+      messenger.showSnackBar(
+        SnackBar(content: Text('❌ No se pudo abrir el archivo')),
+      );
     }
   }
 
@@ -509,6 +517,8 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
+    final messenger = ScaffoldMessenger.of(context);
+
     final resultado = await FilePicker.platform.pickFiles();
     if (resultado == null || resultado.files.single.path == null) return;
 
@@ -521,7 +531,7 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
     int tamano = archivo.lengthSync();
 
     if (tamano > 5 * 1024 * 1024) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.redAccent,
@@ -611,8 +621,8 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
       'hijoID': widget.hijoId,
       'usuarioNombre': user.displayName ?? user.email ?? 'Usuario desconocido',
     });
-
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (!mounted) return;
+    messenger.showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
         backgroundColor: Colors.black87,
@@ -627,6 +637,7 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
         ),
       ),
     );
+    if (!mounted) return;
     await obtenerProgenitores();
   }
 
@@ -672,6 +683,11 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
                   }
 
                   if (snapshot.hasError) {
+                    final err = snapshot.error;
+                    if (err is FirebaseException &&
+                        err.code == 'permission-denied') {
+                      return const FallbackHijosWidget();
+                    }
                     return Center(
                       child: Text(
                         "❌ Error cargando documentos",
@@ -695,7 +711,7 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
 
                   for (var doc in docsFiltrados) {
                     final data = doc.data() as Map<String, dynamic>?;
-                    print(
+                    appLogger.d(
                       '📄 ${data?['tituloUsuario']} - hijoID: ${data?['hijoID']} - usuarioID: ${data?['usuarioID']}',
                     );
                   }
@@ -711,7 +727,7 @@ class _DocumentListScreenState extends State<DocumentListScreen> {
 
                   for (var doc in docsFiltrados) {
                     final data = doc.data() as Map<String, dynamic>?;
-                    print(
+                    appLogger.d(
                       '📄 ${data?['tituloUsuario']} - hijoID: ${data?['hijoID']} - usuarioID: ${data?['usuarioID']}',
                     );
                   }

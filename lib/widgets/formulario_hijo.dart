@@ -1,16 +1,17 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+// import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:entredos/utils/app_logger.dart';
 import 'package:uuid/uuid.dart';
 
 class FormularioHijo extends StatefulWidget {
   final DocumentSnapshot? hijoExistente;
 
-  FormularioHijo({this.hijoExistente});
+  const FormularioHijo({super.key, this.hijoExistente});
 
   @override
   _FormularioHijoState createState() => _FormularioHijoState();
@@ -74,6 +75,9 @@ class _FormularioHijoState extends State<FormularioHijo> {
     final colegio = colegioController.text.trim();
     final observaciones = observacionesController.text.trim();
 
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
     setState(() {
       nombreError = nombre.isEmpty;
       apellidosError = apellidos.isEmpty;
@@ -93,7 +97,7 @@ class _FormularioHijoState extends State<FormularioHijo> {
         fechaError ||
         docIdError ||
         user?.uid == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(
           content: Text('⚠️ Corrige los errores del formulario'),
           backgroundColor: Color(0xFF0D1B2A),
@@ -117,9 +121,9 @@ class _FormularioHijoState extends State<FormularioHijo> {
         final snapshot = await uploadTask.whenComplete(() => null);
         fotoUrl = await snapshot.ref.getDownloadURL();
       }
-    } catch (e) {
-      print('❌ Error al subir imagen: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
+    } catch (e, st) {
+      appLogger.e('❌ Error al subir imagen: $e', e, st);
+      messenger.showSnackBar(
         const SnackBar(
           content: Text('❌ Error al subir imagen'),
           backgroundColor: Color(0xFF0D1B2A),
@@ -141,7 +145,7 @@ class _FormularioHijoState extends State<FormularioHijo> {
     try {
       if (widget.hijoExistente != null) {
         await widget.hijoExistente!.reference.update(datosHijo);
-        Navigator.pop(context, null);
+        navigator.pop(null);
       } else {
         final codigo = generarCodigoInvitacion(nombre);
         await FirebaseFirestore.instance.collection('hijos').add({
@@ -153,11 +157,11 @@ class _FormularioHijoState extends State<FormularioHijo> {
           'codigoInvitacion': codigo,
           'fechaCreacion': Timestamp.now(),
         });
-        Navigator.pop(context, codigo);
+        navigator.pop(codigo);
       }
-    } catch (e) {
-      print('❌ Error al guardar hijo: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
+    } catch (e, st) {
+      appLogger.e('❌ Error al guardar hijo: $e', e, st);
+      messenger.showSnackBar(
         const SnackBar(
           content: Text('❌ Error al guardar hijo'),
           backgroundColor: Color(0xFF0D1B2A),
@@ -351,6 +355,7 @@ class _FormularioHijoState extends State<FormularioHijo> {
               borderRadius: BorderRadius.circular(12),
             ),
           ),
+          onPressed: guardando || !esValido ? null : guardarHijo,
           child: guardando
               ? const SizedBox(
                   width: 20,
@@ -367,7 +372,6 @@ class _FormularioHijoState extends State<FormularioHijo> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-          onPressed: guardando || !esValido ? null : guardarHijo,
         ),
       ],
     );

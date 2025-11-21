@@ -35,7 +35,7 @@ class Mensaje {
 
   factory Mensaje.fromDoc(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
-    DateTime? _tsToDate(dynamic ts) {
+    DateTime? tsToDate(dynamic ts) {
       if (ts == null) return null;
       if (ts is Timestamp) return ts.toDate();
       if (ts is DateTime) return ts;
@@ -44,7 +44,7 @@ class Mensaje {
 
     final readRaw = data['readBy'] as Map<String, dynamic>? ?? {};
     final readBy = <String, DateTime?>{};
-    readRaw.forEach((k, v) => readBy[k] = _tsToDate(v));
+    readRaw.forEach((k, v) => readBy[k] = tsToDate(v));
 
     final responsesRaw = List.from(data['responses'] ?? []);
 
@@ -56,8 +56,8 @@ class Mensaje {
       type: data['type'] ?? 'text',
       options: List<String>.from(data['options'] ?? []),
       status: data['status'] ?? 'pending',
-      createdAt: _tsToDate(data['createdAt']),
-      sentAt: _tsToDate(data['sentAt']),
+      createdAt: tsToDate(data['createdAt']),
+      sentAt: tsToDate(data['sentAt']),
       readBy: readBy,
       responses: responsesRaw.cast<Map<String, dynamic>>(),
       senderName: (data['senderName'] as String?)?.toString(),

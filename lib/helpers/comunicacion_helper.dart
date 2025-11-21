@@ -48,6 +48,7 @@ class ComunicacionHelper {
           ElevatedButton(
             child: const Text('Guardar'),
             onPressed: () async {
+              final navigator = Navigator.of(context);
               final titulo = tituloController.text.trim();
               final contenido = contenidoController.text.trim();
               final tipo = tipoSeleccionado ?? 'General';
@@ -65,7 +66,7 @@ class ComunicacionHelper {
                     'usuarioID': uid,
                   });
 
-              Navigator.pop(context);
+              navigator.pop();
               onGuardado();
             },
           ),

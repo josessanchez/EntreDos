@@ -18,13 +18,14 @@ class DocumentoHelper {
     String nombre,
     String url,
   ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
     final mime = lookupMimeType(nombre) ?? '';
     final extension = nombre.split('.').last.toLowerCase();
     final extensionesOffice = ['doc', 'docx', 'xls', 'xlsx'];
 
     if (mime.startsWith('image/')) {
-      Navigator.push(
-        context,
+      navigator.push(
         MaterialPageRoute(
           builder: (_) => Scaffold(
             backgroundColor: const Color(0xFF0D1B2A),
@@ -40,8 +41,7 @@ class DocumentoHelper {
         ),
       );
     } else if (mime == 'application/pdf') {
-      Navigator.push(
-        context,
+      navigator.push(
         MaterialPageRoute(
           builder: (_) => VisorPdfScreen(url: url, nombre: nombre),
         ),
@@ -56,7 +56,7 @@ class DocumentoHelper {
         await archivoLocal.writeAsBytes(bytes, flush: true);
         await OpenFilex.open(archivoLocal.path);
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text(
               '❌ Error al abrir "$nombre": $e',
@@ -81,6 +81,7 @@ class DocumentoHelper {
     String nombre,
     String url,
   ) async {
+    final messenger = ScaffoldMessenger.of(context);
     try {
       final dir = Directory('/storage/emulated/0/Download');
       final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -98,7 +99,7 @@ class DocumentoHelper {
 
       if (taskId == null) throw Exception('No se pudo encolar la descarga');
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(
             '📥 Descarga iniciada para "$nombre"',
@@ -119,7 +120,7 @@ class DocumentoHelper {
         await _scanFile('${dir.path}/$nombreFinal');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(
             '❌ Error al descargar "$nombre": $e',
@@ -163,6 +164,7 @@ class DocumentoHelper {
       return;
     }
 
+    final messenger = ScaffoldMessenger.of(context);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -185,10 +187,6 @@ class DocumentoHelper {
             onPressed: () => Navigator.pop(context, false),
           ),
           ElevatedButton(
-            child: const Text(
-              'Eliminar',
-              style: TextStyle(fontFamily: 'Montserrat'),
-            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.redAccent,
               foregroundColor: Colors.white,
@@ -198,6 +196,10 @@ class DocumentoHelper {
               ),
             ),
             onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(fontFamily: 'Montserrat'),
+            ),
           ),
         ],
       ),
@@ -216,7 +218,7 @@ class DocumentoHelper {
           .doc(docId)
           .delete();
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(
             '🗑️ Documento "$nombre" eliminado',
@@ -231,7 +233,7 @@ class DocumentoHelper {
         ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(
             '❌ Error al eliminar: $e',

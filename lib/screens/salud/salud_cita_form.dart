@@ -144,8 +144,11 @@ class _SaludCitaFormScreenState extends State<SaludCitaFormScreen> {
     if (user == null ||
         tipoCita == null ||
         especialidad == null ||
-        fechaHora == null)
+        fechaHora == null) {
       return;
+    }
+
+    final navigator = Navigator.of(context);
 
     String? urlDocumento;
     String? nombreDocumento;
@@ -166,7 +169,7 @@ class _SaludCitaFormScreenState extends State<SaludCitaFormScreen> {
         await ref.putFile(archivoAdjunto!, metadata);
         urlDocumento = await ref.getDownloadURL();
       } catch (e) {
-        setState(() => mensaje = '❌ Error al subir el documento');
+        if (mounted) setState(() => mensaje = '❌ Error al subir el documento');
         return;
       }
     }
@@ -187,10 +190,10 @@ class _SaludCitaFormScreenState extends State<SaludCitaFormScreen> {
       'tituloDocumento': tituloUsuario ?? '$tipoCita • $especialidad',
     });
 
-    setState(() => mensaje = '✅ Cita registrada correctamente');
+    if (mounted) setState(() => mensaje = '✅ Cita registrada correctamente');
     // show success message briefly and return to the previous screen (list)
     Future.delayed(const Duration(milliseconds: 800), () {
-      Navigator.pop(context);
+      if (mounted) navigator.pop();
     });
   }
 
@@ -212,6 +215,8 @@ class _SaludCitaFormScreenState extends State<SaludCitaFormScreen> {
       lastDate: DateTime(2100),
     );
     if (fecha == null) return;
+
+    if (!mounted) return;
 
     final hora = await showTimePicker(
       context: context,

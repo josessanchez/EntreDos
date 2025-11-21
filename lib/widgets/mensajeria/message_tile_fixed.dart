@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:entredos/models/mensaje.dart';
 import 'package:entredos/helpers/documento_helper.dart';
+import 'package:entredos/utils/app_logger.dart';
 
 typedef OnRespond = Future<void> Function(String action, {String? comment});
 
@@ -25,7 +26,6 @@ class MessageTile extends StatelessWidget {
     final isMine = mensaje.senderId == currentUid;
     final createdAt = mensaje.createdAt;
     final statusLower = mensaje.status.toLowerCase();
-    final query = searchQuery?.trim() ?? '';
 
     String mapStatusLabel(String status) {
       switch (status.toLowerCase()) {
@@ -169,12 +169,11 @@ class MessageTile extends StatelessWidget {
                             try {
                               DocumentoHelper.ver(context, name, url);
                             } catch (e, st) {
-                              // ignore: avoid_print
-                              print(
+                              appLogger.e(
                                 '[MessageTile] DocumentoHelper.ver error: $e',
+                                e,
+                                st,
                               );
-                              // ignore: avoid_print
-                              print(st);
                             }
                           }
                         },
@@ -218,12 +217,11 @@ class MessageTile extends StatelessWidget {
                                         url,
                                       );
                                     } catch (e, st) {
-                                      // ignore: avoid_print
-                                      print(
+                                      appLogger.e(
                                         '[MessageTile] DocumentoHelper.descargar error: $e',
+                                        e,
+                                        st,
                                       );
-                                      // ignore: avoid_print
-                                      print(st);
                                     }
                                   }
                                 },
@@ -305,10 +303,11 @@ class MessageTile extends StatelessWidget {
                                 try {
                                   await onRespond('comment', comment: comment);
                                 } catch (e, st) {
-                                  // ignore: avoid_print
-                                  print('[MessageTile] onRespond error: $e');
-                                  // ignore: avoid_print
-                                  print(st);
+                                  appLogger.e(
+                                    '[MessageTile] onRespond error: $e',
+                                    e,
+                                    st,
+                                  );
                                 }
                               }
                             },
@@ -332,16 +331,16 @@ class MessageTile extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 6.0),
                         child: query.isEmpty
                             ? Text(
-                                '- ${actionLabel}${comment.isNotEmpty ? ': $comment' : ''}',
+                                '- $actionLabel${comment.isNotEmpty ? ': $comment' : ''}',
                                 style: TextStyle(color: Colors.white60),
                               )
                             : _buildHighlightedText(
-                                '- ${actionLabel}${comment.isNotEmpty ? ': $comment' : ''}',
+                                '- $actionLabel${comment.isNotEmpty ? ': $comment' : ''}',
                                 query,
                                 baseStyle: TextStyle(color: Colors.white60),
                               ),
                       );
-                    }).toList(),
+                    }),
                   ],
                 ],
               ),
@@ -364,16 +363,18 @@ class MessageTile extends StatelessWidget {
     try {
       final pattern = RegExp(RegExp.escape(s), caseSensitive: false);
       final matches = pattern.allMatches(text);
-      if (matches.isEmpty)
+      if (matches.isEmpty) {
         return Text(text, style: defaultStyle, softWrap: true);
+      }
 
       final spans = <TextSpan>[];
       int last = 0;
       for (final m in matches) {
-        if (m.start > last)
+        if (m.start > last) {
           spans.add(
             TextSpan(text: text.substring(last, m.start), style: defaultStyle),
           );
+        }
         spans.add(
           TextSpan(
             text: text.substring(m.start, m.end),
@@ -387,8 +388,9 @@ class MessageTile extends StatelessWidget {
         );
         last = m.end;
       }
-      if (last < text.length)
+      if (last < text.length) {
         spans.add(TextSpan(text: text.substring(last), style: defaultStyle));
+      }
 
       return RichText(
         text: TextSpan(children: spans),

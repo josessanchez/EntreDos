@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:entredos/utils/app_logger.dart';
 
 /// Top-level background message handler required by firebase_messaging.
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -13,7 +14,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // This runs in its own isolate.
   // We simply log the payload so Cloud Functions/system handles display.
   if (kDebugMode) {
-    print('[FCM] Background message received: ${message.messageId}');
+    appLogger.d('[FCM] Background message received: ${message.messageId}');
   }
 }
 
@@ -55,7 +56,9 @@ class NotificationService {
       await _localNotif.initialize(
         initSettings,
         onDidReceiveNotificationResponse: (response) async {
-          if (kDebugMode) print('[LocalNotif] tapped: ${response.payload}');
+          if (kDebugMode) {
+            appLogger.d('[LocalNotif] tapped: ${response.payload}');
+          }
         },
       );
 
@@ -66,7 +69,9 @@ class NotificationService {
           >()
           ?.createNotificationChannel(_androidChannel);
     } catch (e) {
-      if (kDebugMode) print('[LocalNotif] initialization failed: $e');
+      if (kDebugMode) {
+        appLogger.w('[LocalNotif] initialization failed: $e');
+      }
     }
 
     // Request permission (iOS/macOS)
@@ -79,13 +84,17 @@ class NotificationService {
     try {
       if (FirebaseAuth.instance.currentUser == null) {
         final cred = await FirebaseAuth.instance.signInAnonymously();
-        if (kDebugMode) print('[FCM] signed in anonymously: ${cred.user?.uid}');
+        if (kDebugMode) {
+          appLogger.d('[FCM] signed in anonymously: ${cred.user?.uid}');
+        }
         // store anon uid for potential migration later
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('anon_uid', cred.user?.uid ?? '');
       }
     } catch (e) {
-      if (kDebugMode) print('[FCM] anonymous sign-in failed: $e');
+      if (kDebugMode) {
+        appLogger.w('[FCM] anonymous sign-in failed: $e');
+      }
     }
 
     // Track current uid for sign-out cleanup
@@ -93,26 +102,34 @@ class NotificationService {
 
     // Handle foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-      if (kDebugMode) print('[FCM] onMessage: ${message.messageId}');
+      if (kDebugMode) {
+        appLogger.d('[FCM] onMessage: ${message.messageId}');
+      }
       await showLocalNotificationFromRemote(message);
     });
 
     // Handle when user taps the notification (app in background -> opened)
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      if (kDebugMode) print('[FCM] onMessageOpenedApp: ${message.messageId}');
+      if (kDebugMode) {
+        appLogger.d('[FCM] onMessageOpenedApp: ${message.messageId}');
+      }
       // App-specific navigation can be triggered here by exposing a stream or callback
     });
 
     // Get token and persist to Firestore
     final token = await _fm.getToken();
     if (token != null) {
-      if (kDebugMode) print('[FCM] got token: $token');
+      if (kDebugMode) {
+        appLogger.d('[FCM] got token: $token');
+      }
       await _saveTokenToFirestore(token);
     }
 
     // Listen for token refresh
     _fm.onTokenRefresh.listen((newToken) async {
-      if (kDebugMode) print('[FCM] token refreshed');
+      if (kDebugMode) {
+        appLogger.d('[FCM] token refreshed');
+      }
       await _saveTokenToFirestore(newToken);
     });
 
@@ -148,9 +165,9 @@ class NotificationService {
         provisional: false,
         sound: true,
       );
-      if (kDebugMode) print('[FCM] permission: $settings');
+      if (kDebugMode) appLogger.d('[FCM] permission: $settings');
     } catch (e) {
-      if (kDebugMode) print('[FCM] permission request failed: $e');
+      if (kDebugMode) appLogger.w('[FCM] permission request failed: $e');
     }
   }
 
@@ -161,7 +178,7 @@ class NotificationService {
       final title = notif?.title ?? message.data['title'] ?? 'Notificación';
       final body = notif?.body ?? message.data['body'] ?? '';
       if (kDebugMode) {
-        print(
+        appLogger.d(
           '[LocalNotif] foreground message - title: $title body: $body data: ${message.data}',
         );
       }
@@ -189,10 +206,12 @@ class NotificationService {
         title,
         body,
         details,
-        payload: message.data['messageId'] ?? null,
+        payload: message.data['messageId'],
       );
     } catch (e) {
-      if (kDebugMode) print('[LocalNotif] error handling remote message: $e');
+      if (kDebugMode) {
+        appLogger.w('[LocalNotif] error handling remote message: $e');
+      }
     }
   }
 
@@ -200,7 +219,9 @@ class NotificationService {
     try {
       await _fm.subscribeToTopic(topic);
     } catch (e) {
-      if (kDebugMode) print('[FCM] subscribeToTopic failed: $e');
+      if (kDebugMode) {
+        appLogger.w('[FCM] subscribeToTopic failed: $e');
+      }
     }
   }
 
@@ -208,7 +229,9 @@ class NotificationService {
     try {
       await _fm.unsubscribeFromTopic(topic);
     } catch (e) {
-      if (kDebugMode) print('[FCM] unsubscribeFromTopic failed: $e');
+      if (kDebugMode) {
+        appLogger.w('[FCM] unsubscribeFromTopic failed: $e');
+      }
     }
   }
 
@@ -221,12 +244,15 @@ class NotificationService {
         final prefs = await SharedPreferences.getInstance();
         final pending = prefs.getStringList('pending_fcm_tokens') ?? <String>[];
         if (!pending.contains(token)) {
-          if (kDebugMode)
-            print('[FCM] saving pending token: ${token.length} chars');
+          if (kDebugMode) {
+            appLogger.d('[FCM] saving pending token: ${token.length} chars');
+          }
           pending.add(token);
           await prefs.setStringList('pending_fcm_tokens', pending);
         }
-        if (kDebugMode) print('[FCM] saved token pending for later');
+        if (kDebugMode) {
+          appLogger.d('[FCM] saved token pending for later');
+        }
         return;
       }
       final docRef = FirebaseFirestore.instance
@@ -241,12 +267,15 @@ class NotificationService {
         'createdAt': FieldValue.serverTimestamp(),
         'lastSeenAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-      if (kDebugMode)
-        print(
+      if (kDebugMode) {
+        appLogger.d(
           '[FCM] saved token to firestore for uid=$uid (len=${token.length})',
         );
+      }
     } catch (e) {
-      if (kDebugMode) print('[FCM] save token failed: $e');
+      if (kDebugMode) {
+        appLogger.w('[FCM] save token failed: $e');
+      }
     }
   }
 
@@ -272,10 +301,13 @@ class NotificationService {
       }
       await batch.commit();
       await prefs.remove('pending_fcm_tokens');
-      if (kDebugMode)
-        print('[FCM] flushed ${pending.length} pending tokens to $uid');
+      if (kDebugMode) {
+        appLogger.d('[FCM] flushed ${pending.length} pending tokens to $uid');
+      }
     } catch (e) {
-      if (kDebugMode) print('[FCM] flush pending tokens failed: $e');
+      if (kDebugMode) {
+        appLogger.w('[FCM] flush pending tokens failed: $e');
+      }
     }
   }
 
@@ -291,10 +323,14 @@ class NotificationService {
       final snap = await docRef.get();
       if (snap.exists) {
         await docRef.delete();
-        if (kDebugMode) print('[FCM] removed token for uid=$uid');
+        if (kDebugMode) {
+          appLogger.d('[FCM] removed token for uid=$uid');
+        }
       }
     } catch (e) {
-      if (kDebugMode) print('[FCM] remove token failed: $e');
+      if (kDebugMode) {
+        appLogger.w('[FCM] remove token failed: $e');
+      }
     }
   }
 }

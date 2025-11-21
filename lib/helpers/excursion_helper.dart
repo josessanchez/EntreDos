@@ -59,6 +59,7 @@ class ExcursionHelper {
           ElevatedButton(
             child: const Text('Guardar'),
             onPressed: () async {
+              final navigator = Navigator.of(context);
               final titulo = tituloController.text.trim();
               final descripcion = descripcionController.text.trim();
               final tipo = tipoSeleccionado ?? 'Otro';
@@ -87,8 +88,7 @@ class ExcursionHelper {
                 'nombreArchivo': nombreArchivo,
                 'urlArchivo': urlArchivo,
               });
-
-              Navigator.pop(context);
+              navigator.pop();
               onGuardado();
             },
           ),

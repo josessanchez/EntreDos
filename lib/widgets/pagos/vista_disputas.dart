@@ -5,6 +5,8 @@ import 'package:entredos/models/modelo_pago.dart';
 import 'package:entredos/widgets/pagos/formulario_disputa.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:entredos/widgets/fallback_body.dart';
+import 'package:entredos/utils/app_logger.dart';
 
 class VistaDisputas extends StatefulWidget {
   final String hijoID;
@@ -29,7 +31,7 @@ class _TarjetaDisputa extends StatelessWidget {
     final estado = disputa.estado.name.toUpperCase();
 
     return Card(
-      color: color.withOpacity(0.1),
+      color: color.withAlpha((0.1 * 255).round()),
       margin: const EdgeInsets.only(bottom: 20),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -117,10 +119,14 @@ class _VistaDisputasState extends State<VistaDisputas> {
           }
 
           if (snapshot.hasError) {
-            return const Center(
+            final err = snapshot.error;
+            if (err is FirebaseException && err.code == 'permission-denied') {
+              return const FallbackHijosWidget();
+            }
+            return Center(
               child: Text(
-                '❌ Error al cargar las disputas',
-                style: TextStyle(
+                '❌ Error al cargar las disputas: ${snapshot.error}',
+                style: const TextStyle(
                   color: Colors.redAccent,
                   fontFamily: 'Montserrat',
                 ),
@@ -157,6 +163,7 @@ class _VistaDisputasState extends State<VistaDisputas> {
               builder: (_) => FormularioDisputa(hijoID: widget.hijoID),
             ),
           );
+          if (!mounted) return;
           setState(() {
             disputasFuturas = cargarDisputas();
           });
@@ -172,16 +179,16 @@ class _VistaDisputasState extends State<VistaDisputas> {
           .where('hijoID', isEqualTo: widget.hijoID)
           .get();
 
-      print('📦 Disputas encontradas: ${snapshot.docs.length}');
+      appLogger.i('📦 Disputas encontradas: ${snapshot.docs.length}');
       for (var doc in snapshot.docs) {
-        print('🧾 Disputa: ${doc.data()}');
+        appLogger.d('🧾 Disputa: ${doc.data()}');
       }
 
       return snapshot.docs
           .map((doc) => ModeloDisputa.fromFirestore(doc))
           .toList();
-    } catch (e) {
-      print('❌ Error al cargar disputas: $e');
+    } catch (e, st) {
+      appLogger.e('❌ Error al cargar disputas: $e', e, st);
       return [];
     }
   }

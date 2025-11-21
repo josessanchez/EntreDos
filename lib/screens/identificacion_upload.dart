@@ -148,6 +148,8 @@ class _IdentificacionUploadScreenState
       return;
     }
 
+    final navigator = Navigator.of(context);
+
     String extension = nombreOriginal!.split('.').last.toLowerCase();
     final baseNombre = nombreOriginal!.split('.').first;
     final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -210,10 +212,10 @@ class _IdentificacionUploadScreenState
       'usuarioNombre': user.displayName ?? user.email ?? 'Usuario desconocido',
     });
 
-    setState(() => mensaje = '✅ Documento subido correctamente');
+    if (mounted) setState(() => mensaje = '✅ Documento subido correctamente');
 
     Future.delayed(const Duration(milliseconds: 800), () {
-      Navigator.pop(context);
+      if (mounted) navigator.pop();
     });
   }
 

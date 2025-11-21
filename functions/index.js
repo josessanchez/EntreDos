@@ -397,3 +397,157 @@ exports.debugSendToken = functions.https.onRequest(async (req, res) => {
     res.status(500).json({ error: String(err) });
   }
 });
+
+
+/**
+ * Callable function: getHijoByCodigo
+ * Given an invitation code, returns the hijo document (id + data) if found.
+ * Runs with admin privileges so clients that cannot query `hijos` directly
+ * (due to restrictive security rules) can still look up a child by code.
+ */
+exports.getHijoByCodigo = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('permission-denied', 'Authentication required');
+  }
+
+  const codigo = (data && data.codigo) ? String(data.codigo).trim() : '';
+  if (!codigo) {
+    throw new functions.https.HttpsError('invalid-argument', 'codigo is required');
+  }
+
+  try {
+    const q = await admin.firestore().collection('hijos').where('codigoInvitacion', '==', codigo).limit(1).get();
+    if (q.empty) return { found: false };
+    const doc = q.docs[0];
+    const raw = doc.data() || {};
+
+    // Convert Firestore Timestamps to milliseconds for safe JSON transport
+    const convert = (v) => {
+      if (v && typeof v.toDate === 'function') {
+        return v.toDate().toISOString();
+      }
+      if (Array.isArray(v)) return v.map(convert);
+      if (v && typeof v === 'object') {
+        const out = {};
+        Object.keys(v).forEach(k => out[k] = convert(v[k]));
+        return out;
+      }
+      return v;
+    };
+
+    const safeData = {};
+    Object.keys(raw).forEach(k => safeData[k] = convert(raw[k]));
+
+    return { found: true, id: doc.id, data: safeData };
+  } catch (err) {
+    console.error('getHijoByCodigo error', err);
+    throw new functions.https.HttpsError('internal', 'Failed to lookup hijo by codigo');
+  }
+});
+
+
+/**
+ * Callable function: joinHijoByCodigo
+ * Finds a hijo by invitation code and adds the authenticated caller UID to its
+ * `progenitores` array (if not already present). Returns the updated child data.
+ */
+exports.joinHijoByCodigo = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('permission-denied', 'Authentication required');
+  }
+
+  const uid = context.auth.uid;
+  const codigo = (data && data.codigo) ? String(data.codigo).trim() : '';
+  if (!codigo) {
+    throw new functions.https.HttpsError('invalid-argument', 'codigo is required');
+  }
+
+  try {
+    const q = await admin.firestore().collection('hijos').where('codigoInvitacion', '==', codigo).limit(1).get();
+    if (q.empty) return { joined: false, reason: 'not_found' };
+    const doc = q.docs[0];
+    const ref = doc.ref;
+    const raw = doc.data() || {};
+    const progenitores = Array.isArray(raw.progenitores) ? raw.progenitores : [];
+
+    if (!progenitores.includes(uid)) {
+      progenitores.push(uid);
+      await ref.update({ progenitores });
+    }
+
+    // Convert timestamps to ISO strings for safe transport
+    const convert = (v) => {
+      if (v && typeof v.toDate === 'function') return v.toDate().toISOString();
+      if (Array.isArray(v)) return v.map(convert);
+      if (v && typeof v === 'object') {
+        const out = {};
+        Object.keys(v).forEach(k => out[k] = convert(v[k]));
+        return out;
+      }
+      return v;
+    };
+
+    const updatedSnap = await ref.get();
+    const updated = updatedSnap.data() || {};
+    const safe = {};
+    Object.keys(updated).forEach(k => safe[k] = convert(updated[k]));
+
+    return { joined: true, id: doc.id, data: safe };
+  } catch (err) {
+    console.error('joinHijoByCodigo error', err);
+    throw new functions.https.HttpsError('internal', 'Failed to join hijo by codigo');
+  }
+});
+
+
+/**
+ * Callable function: listHijosForUid
+ * Returns an array of hijo documents (id + data) where the given uid is in
+ * `progenitores`. This runs with admin privileges and is intended as a
+ * fallback for clients that cannot run the query directly due to restrictive
+ * Firestore rules during migration/testing.
+ */
+exports.listHijosForUid = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('permission-denied', 'Authentication required');
+  }
+
+  // Caller identity and requested uid
+  const callerUid = context.auth.uid;
+  const requestedUid = (data && data.uid) ? String(data.uid) : callerUid;
+
+  // Only allow listing another user's hijos if the caller has an admin custom claim.
+  // This prevents leaking child records when callers attempt to pass arbitrary uids.
+  const isAdmin = context.auth.token && context.auth.token.admin === true;
+  if (requestedUid !== callerUid && !isAdmin) {
+    throw new functions.https.HttpsError('permission-denied', 'Not authorized to list hijos for other users');
+  }
+
+  const uid = requestedUid;
+
+  try {
+    const q = await admin.firestore().collection('hijos').where('progenitores', 'array-contains', uid).get();
+    const convert = (v) => {
+      if (v && typeof v.toDate === 'function') return v.toDate().toISOString();
+      if (Array.isArray(v)) return v.map(convert);
+      if (v && typeof v === 'object') {
+        const out = {};
+        Object.keys(v).forEach(k => out[k] = convert(v[k]));
+        return out;
+      }
+      return v;
+    };
+
+    const items = q.docs.map(d => {
+      const raw = d.data() || {};
+      const safe = {};
+      Object.keys(raw).forEach(k => safe[k] = convert(raw[k]));
+      return { id: d.id, data: safe };
+    });
+
+    return { items };
+  } catch (err) {
+    console.error('listHijosForUid error', err);
+    throw new functions.https.HttpsError('internal', 'Failed to list hijos');
+  }
+});

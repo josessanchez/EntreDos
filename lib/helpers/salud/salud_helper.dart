@@ -18,8 +18,10 @@ class SaludHelper {
       return;
     }
 
+    final messenger = ScaffoldMessenger.of(context);
+    final dialogContext = context;
     final confirmacion = await showDialog<bool>(
-      context: context,
+      context: dialogContext,
       builder: (context) => AlertDialog(
         title: const Text('Eliminar documento'),
         content: Text('¿Seguro que quieres eliminar "$nombre"?'),
@@ -45,11 +47,13 @@ class SaludHelper {
           .delete();
       final ref = FirebaseStorage.instance.refFromURL(url);
       await ref.delete();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('✅ Documento eliminado')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('✅ Documento eliminado')),
+      );
     } catch (e) {
-      _mostrarError(context, 'Error al eliminar el documento');
+      messenger.showSnackBar(
+        const SnackBar(content: Text('❌ Error al eliminar el documento')),
+      );
     }
   }
 
@@ -58,11 +62,14 @@ class SaludHelper {
     String nombre,
     String url,
   ) async {
+    final messenger = ScaffoldMessenger.of(context);
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
-      _mostrarError(context, 'No se pudo descargar el documento');
+      messenger.showSnackBar(
+        const SnackBar(content: Text('❌ No se pudo descargar el documento')),
+      );
     }
   }
 
@@ -71,11 +78,14 @@ class SaludHelper {
     String nombre,
     String url,
   ) async {
+    final messenger = ScaffoldMessenger.of(context);
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
-      _mostrarError(context, 'No se pudo abrir el documento');
+      messenger.showSnackBar(
+        const SnackBar(content: Text('❌ No se pudo abrir el documento')),
+      );
     }
   }
 

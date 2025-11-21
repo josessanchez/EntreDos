@@ -69,6 +69,7 @@ class DocumentoAcademicoHelper {
           ElevatedButton(
             child: const Text('Guardar'),
             onPressed: () async {
+              final navigator = Navigator.of(context);
               final titulo = tituloController.text.trim();
               final observaciones = observacionesController.text.trim();
               final fecha = DateTime.now().toIso8601String();
@@ -95,8 +96,7 @@ class DocumentoAcademicoHelper {
                 'nombreArchivo': nombreArchivo,
                 'urlArchivo': urlArchivo,
               });
-
-              Navigator.pop(context);
+              navigator.pop();
               onGuardado();
             },
           ),

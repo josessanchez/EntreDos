@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+// ignore_for_file: use_build_context_synchronously
 import 'package:flutter/material.dart';
 
 class AusenciaHelper {
@@ -76,15 +77,16 @@ class AusenciaHelper {
                         : '${fechaSeleccionada!.day}/${fechaSeleccionada!.month} ${fechaSeleccionada!.hour}:${fechaSeleccionada!.minute.toString().padLeft(2, '0')}',
                   ),
                   onPressed: () async {
+                    final dialogContext = context;
                     final fecha = await showDatePicker(
-                      context: context,
+                      context: dialogContext,
                       initialDate: DateTime.now(),
                       firstDate: DateTime(2020),
                       lastDate: DateTime(2030),
                     );
                     if (fecha != null) {
                       final hora = await showTimePicker(
-                        context: context,
+                        context: dialogContext,
                         initialTime: TimeOfDay.now(),
                       );
                       if (hora != null) {
@@ -121,6 +123,7 @@ class AusenciaHelper {
           ElevatedButton(
             child: const Text('Guardar'),
             onPressed: () async {
+              final navigator = Navigator.of(context);
               final motivo = motivoController.text.trim();
               final observaciones = observacionesController.text.trim();
               final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
@@ -151,7 +154,7 @@ class AusenciaHelper {
                 'urlArchivo': urlArchivo,
               });
 
-              Navigator.pop(context);
+              navigator.pop();
               onGuardado();
             },
           ),
@@ -244,15 +247,16 @@ class AusenciaHelper {
                         : '${fechaSeleccionada!.day}/${fechaSeleccionada!.month} ${fechaSeleccionada!.hour}:${fechaSeleccionada!.minute.toString().padLeft(2, '0')}',
                   ),
                   onPressed: () async {
+                    final dialogContext = context;
                     final fecha = await showDatePicker(
-                      context: context,
+                      context: dialogContext,
                       initialDate: fechaSeleccionada ?? DateTime.now(),
                       firstDate: DateTime(2020),
                       lastDate: DateTime(2030),
                     );
                     if (fecha != null) {
                       final hora = await showTimePicker(
-                        context: context,
+                        context: dialogContext,
                         initialTime: TimeOfDay.fromDateTime(
                           fechaSeleccionada ?? DateTime.now(),
                         ),
@@ -291,6 +295,7 @@ class AusenciaHelper {
           ElevatedButton(
             child: const Text('Guardar cambios'),
             onPressed: () async {
+              final navigator = Navigator.of(context);
               final motivo = motivoController.text.trim();
               final observaciones = observacionesController.text.trim();
               String? nuevoNombreArchivo = nombreArchivo;
@@ -321,7 +326,7 @@ class AusenciaHelper {
                     'urlArchivo': nuevaUrlArchivo,
                   });
 
-              Navigator.pop(context);
+              navigator.pop();
               onGuardado();
             },
           ),
