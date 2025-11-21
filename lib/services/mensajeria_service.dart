@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:entredos/models/mensaje.dart';
+import 'package:entredos/utils/app_logger.dart';
 
 /// Clean implementation of MensajeriaService.
 class MensajeriaService {
@@ -41,8 +42,7 @@ class MensajeriaService {
     };
 
     final ref = await _mensajes.add(doc);
-    // ignore: avoid_print
-    print(
+    appLogger.d(
       '[MensajeriaService] sendMessage created doc=${ref.id} hijoId=$hijoId senderId=$senderId file=${fileName ?? 'none'}',
     );
   }
@@ -76,16 +76,12 @@ class MensajeriaService {
         });
       });
     } on FirebaseException catch (fe) {
-      // ignore: avoid_print
-      print(
+      appLogger.w(
         'MensajeriaService.respond FirebaseException: code=${fe.code} message=${fe.message}',
       );
       rethrow;
     } catch (e, st) {
-      // ignore: avoid_print
-      print('MensajeriaService.respond error: $e');
-      // ignore: avoid_print
-      print(st);
+      appLogger.e('MensajeriaService.respond error: $e', e, st);
       rethrow;
     }
   }
@@ -93,8 +89,7 @@ class MensajeriaService {
   /// Marks messages for [hijoId] as read by [uid]. Returns number of documents updated.
   Future<int> markReadForUser(String hijoId, String uid) async {
     // Debug: announce invocation
-    // ignore: avoid_print
-    print(
+    appLogger.d(
       '[MensajeriaService] markReadForUser called for hijoId=$hijoId uid=$uid',
     );
     try {
@@ -104,8 +99,9 @@ class MensajeriaService {
           .limit(500)
           .get();
 
-      // ignore: avoid_print
-      print('[MensajeriaService] fetched ${recent.docs.length} recent docs');
+      appLogger.d(
+        '[MensajeriaService] fetched ${recent.docs.length} recent docs',
+      );
 
       var updated = 0;
       final batch = FirebaseFirestore.instance.batch();
@@ -127,17 +123,14 @@ class MensajeriaService {
 
       if (updated > 0) {
         await batch.commit();
-        // ignore: avoid_print
-        print('[MensajeriaService] commit: updated $updated docs');
+        appLogger.d('[MensajeriaService] commit: updated $updated docs');
       } else {
-        // ignore: avoid_print
-        print('[MensajeriaService] no docs needed update');
+        appLogger.d('[MensajeriaService] no docs needed update');
       }
 
       return updated;
-    } catch (e) {
-      // ignore: avoid_print
-      print('[MensajeriaService] markReadForUser error: $e');
+    } catch (e, st) {
+      appLogger.e('[MensajeriaService] markReadForUser error: $e', e, st);
       return 0;
     }
   }

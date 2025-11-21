@@ -8,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:entredos/widgets/fallback_body.dart';
 
 class SaludDocumentosScreen extends StatefulWidget {
   final String hijoId;
@@ -95,11 +96,25 @@ class _SaludDocumentosScreenState extends State<SaludDocumentosScreen> {
                     .where('tipoEntrada', isEqualTo: 'documento')
                     .snapshots(),
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
 
-                  final docs = snapshot.data!.docs;
+                  if (snapshot.hasError) {
+                    final err = snapshot.error;
+                    if (err is FirebaseException &&
+                        err.code == 'permission-denied') {
+                      return const FallbackHijosWidget();
+                    }
+                    return const Center(
+                      child: Text(
+                        '❌ Error cargando documentos',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    );
+                  }
+
+                  final docs = snapshot.data?.docs ?? [];
                   if (docs.isEmpty) {
                     return const Padding(
                       padding: EdgeInsets.only(top: 12),
@@ -145,8 +160,9 @@ class _SaludDocumentosScreenState extends State<SaludDocumentosScreen> {
 
   Future<void> subirDocumento() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null || archivoSeleccionado == null || tipoDocumento == null)
+    if (user == null || archivoSeleccionado == null || tipoDocumento == null) {
       return;
+    }
 
     final nombreOriginal = archivoSeleccionado!.path.split('/').last;
     final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -173,9 +189,10 @@ class _SaludDocumentosScreenState extends State<SaludDocumentosScreen> {
       'usuarioNombre': user.displayName ?? user.email ?? 'Usuario',
       'hijoID': widget.hijoId,
     });
-
+    if (!mounted) return;
     setState(() => mensaje = '✅ Documento subido correctamente');
     Future.delayed(const Duration(milliseconds: 800), () {
+      if (!mounted) return;
       setState(() {
         tipoDocumento = null;
         tituloDocumento = null;

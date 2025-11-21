@@ -3,6 +3,8 @@ import 'package:entredos/models/modelo_disputa.dart';
 import 'package:entredos/models/modelo_pago.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:entredos/widgets/fallback_body.dart';
+import 'package:entredos/utils/app_logger.dart';
 
 class VistaHistorial extends StatefulWidget {
   final String hijoID;
@@ -113,10 +115,15 @@ class _VistaHistorialState extends State<VistaHistorial> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
-                  return const Center(
+                  final err = snapshot.error;
+                  if (err is FirebaseException &&
+                      err.code == 'permission-denied') {
+                    return const FallbackHijosWidget();
+                  }
+                  return Center(
                     child: Text(
-                      '❌ Error al cargar el historial',
-                      style: TextStyle(
+                      '❌ Error al cargar el historial: ${snapshot.error}',
+                      style: const TextStyle(
                         color: Colors.redAccent,
                         fontFamily: 'Montserrat',
                       ),
@@ -293,8 +300,8 @@ class _VistaHistorialState extends State<VistaHistorial> {
       }
 
       return combinados;
-    } catch (e) {
-      print('❌ Error al cargar registros del mes: $e');
+    } catch (e, st) {
+      appLogger.e('❌ Error al cargar registros del mes: $e', e, st);
       return [];
     }
   }

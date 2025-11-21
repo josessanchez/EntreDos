@@ -4,6 +4,7 @@ import 'package:entredos/screens/salud/salud_cita_form.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:entredos/widgets/fallback_body.dart';
 
 class SaludCalendarioScreen extends StatefulWidget {
   final String hijoId;
@@ -86,8 +87,23 @@ class SaludCalendarioScreenState extends State<SaludCalendarioScreen> {
                     .where('tipoEntrada', isEqualTo: 'cita')
                     .snapshots(),
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (snapshot.hasError) {
+                    final err = snapshot.error;
+                    if (err is FirebaseException &&
+                        err.code == 'permission-denied') {
+                      return const FallbackHijosWidget();
+                    }
+                    return const Padding(
+                      padding: EdgeInsets.only(top: 12),
+                      child: Text(
+                        '❌ Error cargando citas',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    );
                   }
 
                   final citas = snapshot.data!.docs;

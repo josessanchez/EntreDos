@@ -6,6 +6,8 @@ import 'package:share_plus/share_plus.dart';
 import '../widgets/formulario_hijo.dart';
 
 class HijosScreen extends StatefulWidget {
+  const HijosScreen({super.key});
+
   @override
   _HijosScreenState createState() => _HijosScreenState();
 }
@@ -26,7 +28,9 @@ class _HijosScreenState extends State<HijosScreen> {
         builder: (BuildContext dialogContext) {
           return AlertDialog(
             backgroundColor: const Color(0xFF1B263B),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             title: const Text(
               '👶 ¡Tu hijo/a ha sido creado!',
               style: TextStyle(
@@ -130,7 +134,9 @@ class _HijosScreenState extends State<HijosScreen> {
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           backgroundColor: const Color(0xFF1B263B),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Text(
             '🔗 Conectarme a hijo/a',
             style: TextStyle(
@@ -192,14 +198,17 @@ class _HijosScreenState extends State<HijosScreen> {
                 ),
               ),
               onPressed: () async {
+                final navigator = Navigator.of(dialogContext);
+                final messenger = ScaffoldMessenger.of(dialogContext);
+
                 final query = await FirebaseFirestore.instance
                     .collection('hijos')
                     .where('codigoInvitacion', isEqualTo: codigo)
                     .get();
 
                 if (query.docs.isEmpty) {
-                  Navigator.pop(dialogContext);
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  navigator.pop();
+                  messenger.showSnackBar(
                     const SnackBar(
                       content: Text('❌ Código no encontrado'),
                       backgroundColor: Color(0xFF0D1B2A),
@@ -211,15 +220,17 @@ class _HijosScreenState extends State<HijosScreen> {
 
                 final doc = query.docs.first;
                 final datos = doc.data();
-                final progenitores = List<String>.from(datos['progenitores'] ?? []);
+                final progenitores = List<String>.from(
+                  datos['progenitores'] ?? [],
+                );
 
                 if (!progenitores.contains(user.uid)) {
                   progenitores.add(user.uid);
                   await doc.reference.update({'progenitores': progenitores});
                 }
 
-                Navigator.pop(dialogContext);
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                navigator.pop();
+                messenger.showSnackBar(
                   SnackBar(
                     content: Text('✅ Conectado a ${datos['nombre']}'),
                     backgroundColor: Color(0xFF0D1B2A),
@@ -235,7 +246,7 @@ class _HijosScreenState extends State<HijosScreen> {
     );
   }
 
-    void mostrarBottomSheetDetalle(DocumentSnapshot hijoDoc) {
+  void mostrarBottomSheetDetalle(DocumentSnapshot hijoDoc) {
     final data = hijoDoc.data() as Map<String, dynamic>;
     final fecha = (data['fechaNacimiento'] as Timestamp?)?.toDate();
 
@@ -244,7 +255,7 @@ class _HijosScreenState extends State<HijosScreen> {
       showDragHandle: true,
       isScrollControlled: true,
       backgroundColor: const Color(0xFF1B263B),
-      builder: (_) => Padding(
+      builder: (sheetContext) => Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         child: SingleChildScrollView(
           child: Column(
@@ -319,8 +330,11 @@ class _HijosScreenState extends State<HijosScreen> {
                       ),
                     ),
                     onPressed: () {
-                      Clipboard.setData(ClipboardData(text: data['codigoInvitacion']));
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      Clipboard.setData(
+                        ClipboardData(text: data['codigoInvitacion']),
+                      );
+                      final messenger = ScaffoldMessenger.of(sheetContext);
+                      messenger.showSnackBar(
                         const SnackBar(
                           content: Text('📋 Código copiado'),
                           backgroundColor: Color(0xFF0D1B2A),
@@ -361,9 +375,9 @@ class _HijosScreenState extends State<HijosScreen> {
   }
 
   void eliminarHijo(DocumentSnapshot hijoDoc) async {
-    final confirm = await showDialog<bool>(
+    await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (BuildContext dialogContext) => AlertDialog(
         backgroundColor: const Color(0xFF1B263B),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
@@ -376,10 +390,7 @@ class _HijosScreenState extends State<HijosScreen> {
         ),
         content: const Text(
           '¿Estás seguro de que quieres eliminar a este hijo/a? Esta acción no se puede deshacer.',
-          style: TextStyle(
-            color: Colors.white70,
-            fontFamily: 'Montserrat',
-          ),
+          style: TextStyle(color: Colors.white70, fontFamily: 'Montserrat'),
         ),
         actions: [
           TextButton(
@@ -390,13 +401,15 @@ class _HijosScreenState extends State<HijosScreen> {
                 fontFamily: 'Montserrat',
               ),
             ),
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.redAccent,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text(
               'Eliminar',
@@ -406,10 +419,13 @@ class _HijosScreenState extends State<HijosScreen> {
               ),
             ),
             onPressed: () async {
+              final navigator = Navigator.of(dialogContext);
+              final messenger = ScaffoldMessenger.of(dialogContext);
+
               await hijoDoc.reference.delete();
               if (mounted) setState(() {});
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
+              navigator.pop();
+              messenger.showSnackBar(
                 const SnackBar(
                   content: Text('🗑️ Hijo/a eliminado correctamente'),
                   backgroundColor: Color(0xFF0D1B2A),
@@ -424,176 +440,201 @@ class _HijosScreenState extends State<HijosScreen> {
   }
 
   @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    backgroundColor: const Color(0xFF0D1B2A),
-    appBar: AppBar(
-      backgroundColor: const Color(0xFF1B263B),
-      iconTheme: const IconThemeData(color: Colors.white),
-      title: const Text(
-        'Tus hijos',
-        style: TextStyle(
-          fontFamily: 'Montserrat',
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0D1B2A),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1B263B),
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text(
+          'Tus hijos',
+          style: TextStyle(
+            fontFamily: 'Montserrat',
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
+        centerTitle: true,
       ),
-      centerTitle: true,
-    ),
-    body: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          ElevatedButton.icon(
-            icon: const Icon(Icons.add),
-            label: const Text(
-              'Añadir hijo/a',
-              style: TextStyle(
-                fontFamily: 'Montserrat',
-                fontWeight: FontWeight.w600,
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            ElevatedButton.icon(
+              icon: const Icon(Icons.add),
+              label: const Text(
+                'Añadir hijo/a',
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.greenAccent,
-              foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            onPressed: () async {
-              final codigo = await showDialog<String>(
-                context: context,
-                builder: (_) => FormularioHijo(),
-              );
-
-              if (codigo != null) {
-                mostrarDialogoCodigo(codigo);
-                if (mounted) setState(() {});
-              }
-            },
-          ),
-          const SizedBox(height: 12),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.link),
-            label: const Text(
-              'Conectarme a hijo/a con código',
-              style: TextStyle(
-                fontFamily: 'Montserrat',
-                fontWeight: FontWeight.w600,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.greenAccent,
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blueAccent,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            onPressed: mostrarDialogoUnirmeAHijo,
-          ),
-          const SizedBox(height: 24),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('hijos')
-                  .orderBy('fechaCreacion', descending: true)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
+              onPressed: () async {
+                final codigo = await showDialog<String>(
+                  context: context,
+                  builder: (_) => FormularioHijo(),
+                );
+
+                if (codigo != null) {
+                  mostrarDialogoCodigo(codigo);
+                  if (mounted) setState(() {});
                 }
+              },
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.link),
+              label: const Text(
+                'Conectarme a hijo/a con código',
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blueAccent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: mostrarDialogoUnirmeAHijo,
+            ),
+            const SizedBox(height: 24),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('hijos')
+                    .orderBy('fechaCreacion', descending: true)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                final docs = snapshot.data!.docs.where((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  final progenitores = List<String>.from(data['progenitores'] ?? []);
-                  return progenitores.contains(user.uid);
-                }).toList();
-
-                if (docs.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      '🚸 No tienes hijos vinculados aún',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontFamily: 'Montserrat',
-                      ),
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  itemCount: docs.length,
-                  itemBuilder: (context, index) {
-                    final doc = docs[index];
+                  final docs = snapshot.data!.docs.where((doc) {
                     final data = doc.data() as Map<String, dynamic>;
-                    final nacimiento = (data['fechaNacimiento'] as Timestamp?)?.toDate();
-                    final edad = nacimiento != null
-                        ? DateTime.now().year - nacimiento.year -
-                            (DateTime.now().month < nacimiento.month ||
-                                    (DateTime.now().month == nacimiento.month &&
-                                        DateTime.now().day < nacimiento.day)
-                                ? 1
-                                : 0)
-                        : null;
-                    final edadTexto = edad != null ? '$edad años' : 'Edad desconocida';
+                    final progenitores = List<String>.from(
+                      data['progenitores'] ?? [],
+                    );
+                    return progenitores.contains(user.uid);
+                  }).toList();
 
-                    return Card(
-                      color: const Color(0xFF1B263B),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      child: ListTile(
-                        onTap: () => mostrarBottomSheetDetalle(doc),
-                        leading: CircleAvatar(
-                          radius: 24,
-                          backgroundImage: data['fotoUrl'] != ''
-                              ? NetworkImage(data['fotoUrl'])
-                              : null,
-                          backgroundColor: Colors.grey[800],
-                          child: data['fotoUrl'] == ''
-                              ? const Icon(Icons.child_care, color: Colors.white)
-                              : null,
-                        ),
-                        title: Text(
-                          '${data['nombre']} ${data['apellidos']}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontFamily: 'Montserrat',
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        subtitle: Text(
-                          edadTexto,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontFamily: 'Montserrat',
-                          ),
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.visibility, color: Colors.greenAccent),
-                              tooltip: 'Ver detalles',
-                              onPressed: () => mostrarBottomSheetDetalle(doc),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.orangeAccent),
-                              tooltip: 'Editar hijo/a',
-                              onPressed: () => editarHijo(doc),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.redAccent),
-                              tooltip: 'Eliminar hijo/a',
-                              onPressed: () => eliminarHijo(doc),
-                            ),
-                          ],
+                  if (docs.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        '🚸 No tienes hijos vinculados aún',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontFamily: 'Montserrat',
                         ),
                       ),
                     );
-                  },
-                );
-              },
+                  }
+
+                  return ListView.builder(
+                    itemCount: docs.length,
+                    itemBuilder: (context, index) {
+                      final doc = docs[index];
+                      final data = doc.data() as Map<String, dynamic>;
+                      final nacimiento = (data['fechaNacimiento'] as Timestamp?)
+                          ?.toDate();
+                      final edad = nacimiento != null
+                          ? DateTime.now().year -
+                                nacimiento.year -
+                                (DateTime.now().month < nacimiento.month ||
+                                        (DateTime.now().month ==
+                                                nacimiento.month &&
+                                            DateTime.now().day < nacimiento.day)
+                                    ? 1
+                                    : 0)
+                          : null;
+                      final edadTexto = edad != null
+                          ? '$edad años'
+                          : 'Edad desconocida';
+
+                      return Card(
+                        color: const Color(0xFF1B263B),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        child: ListTile(
+                          onTap: () => mostrarBottomSheetDetalle(doc),
+                          leading: CircleAvatar(
+                            radius: 24,
+                            backgroundImage: data['fotoUrl'] != ''
+                                ? NetworkImage(data['fotoUrl'])
+                                : null,
+                            backgroundColor: Colors.grey[800],
+                            child: data['fotoUrl'] == ''
+                                ? const Icon(
+                                    Icons.child_care,
+                                    color: Colors.white,
+                                  )
+                                : null,
+                          ),
+                          title: Text(
+                            '${data['nombre']} ${data['apellidos']}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Text(
+                            edadTexto,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontFamily: 'Montserrat',
+                            ),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.visibility,
+                                  color: Colors.greenAccent,
+                                ),
+                                tooltip: 'Ver detalles',
+                                onPressed: () => mostrarBottomSheetDetalle(doc),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.edit,
+                                  color: Colors.orangeAccent,
+                                ),
+                                tooltip: 'Editar hijo/a',
+                                onPressed: () => editarHijo(doc),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.redAccent,
+                                ),
+                                tooltip: 'Eliminar hijo/a',
+                                onPressed: () => eliminarHijo(doc),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

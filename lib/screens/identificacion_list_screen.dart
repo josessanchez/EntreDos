@@ -4,6 +4,7 @@ import 'package:entredos/screens/identificacion_upload.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:entredos/widgets/fallback_body.dart';
 
 class IdentificacionListScreen extends StatefulWidget {
   final String hijoId;
@@ -54,6 +55,10 @@ class _IdentificacionListScreenState extends State<IdentificacionListScreen> {
           }
 
           if (snapshot.hasError) {
+            final err = snapshot.error;
+            if (err is FirebaseException && err.code == 'permission-denied') {
+              return const FallbackHijosWidget();
+            }
             return const Center(
               child: Text(
                 "❌ Error cargando documentos",

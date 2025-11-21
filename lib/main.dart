@@ -5,11 +5,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'services/notification_service.dart';
+import 'package:entredos/utils/app_logger.dart';
 
 import 'screens/login_screen.dart';
 import 'screens/index_screen.dart';
-import 'screens/document_list_screen.dart';
-import 'screens/document_screen.dart';
+// removed unused document screen imports
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:entredos/theme/theme.dart';
 import 'package:flutter/services.dart'; // ✅ Importación necesaria para orientación
@@ -29,7 +29,7 @@ void main() async {
 
   // initialize notification service (gets token, requests permissions)
   await NotificationService().init();
-  print('✅ Firebase inicializado correctamente');
+  appLogger.i('✅ Firebase inicializado correctamente');
 
   await FlutterDownloader.initialize(debug: true);
 
@@ -37,6 +37,8 @@ void main() async {
 }
 
 class EntreDosApp extends StatelessWidget {
+  const EntreDosApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

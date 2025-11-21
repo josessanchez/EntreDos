@@ -2,17 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 
 import '../widgets/formulario_examen.dart';
 import '../models/examen_model.dart';
+import 'package:entredos/widgets/fallback_body.dart';
 
 class ExamenesScreen extends StatefulWidget {
   final String hijoId;
   final String hijoNombre;
 
   const ExamenesScreen({
+    super.key,
     required this.hijoId,
     required this.hijoNombre,
   });
@@ -27,6 +28,7 @@ class _ExamenesScreenState extends State<ExamenesScreen> {
   Map<DateTime, List<Examen>> examenesPorDia = {};
   String? filtroAsignatura;
   String? filtroTipo;
+  bool _showFallback = false;
 
   @override
   void initState() {
@@ -36,45 +38,64 @@ class _ExamenesScreenState extends State<ExamenesScreen> {
   }
 
   Future<void> cargarExamenes() async {
-    final snapshot = await FirebaseFirestore.instance
-        .collection('examenes')
-        .where('hijoId', isEqualTo: widget.hijoId)
-        .get();
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('examenes')
+          .where('hijoId', isEqualTo: widget.hijoId)
+          .get();
 
-    Map<DateTime, List<Examen>> mapa = {};
+      Map<DateTime, List<Examen>> mapa = {};
 
-    for (var doc in snapshot.docs) {
-      final examen = Examen.fromSnapshot(doc);
-      final fechaClave = DateTime(examen.fecha.year, examen.fecha.month, examen.fecha.day);
-      mapa.putIfAbsent(fechaClave, () => []);
-      mapa[fechaClave]!.add(examen);
+      for (var doc in snapshot.docs) {
+        final examen = Examen.fromSnapshot(doc);
+        final fechaClave = DateTime(
+          examen.fecha.year,
+          examen.fecha.month,
+          examen.fecha.day,
+        );
+        mapa.putIfAbsent(fechaClave, () => []);
+        mapa[fechaClave]!.add(examen);
+      }
+
+      if (!mounted) return;
+      setState(() {
+        examenesPorDia = mapa;
+        _showFallback = false;
+      });
+    } on FirebaseException catch (fe) {
+      if (fe.code == 'permission-denied') {
+        if (!mounted) return;
+        setState(() {
+          _showFallback = true;
+        });
+        return;
+      }
+      rethrow;
     }
-
-    setState(() {
-      examenesPorDia = mapa;
-    });
   }
 
   List<Examen> examenesDelDia(DateTime day) {
     final fechaClave = DateTime(day.year, day.month, day.day);
     return examenesPorDia[fechaClave]
-            ?.where((e) =>
-              (filtroAsignatura == null || e.asignatura == filtroAsignatura) &&
-              (filtroTipo == null || e.tipo == filtroTipo))
+            ?.where(
+              (e) =>
+                  (filtroAsignatura == null ||
+                      e.asignatura == filtroAsignatura) &&
+                  (filtroTipo == null || e.tipo == filtroTipo),
+            )
             .toList() ??
         [];
   }
 
   @override
   Widget build(BuildContext context) {
-    final fechasFiltradas = examenesPorDia.entries
-        .where((entry) =>
-          entry.value.any((e) =>
-            (filtroAsignatura == null || e.asignatura == filtroAsignatura) &&
-            (filtroTipo == null || e.tipo == filtroTipo)))
-        .map((e) => e.key)
-        .toList()
-      ..sort((a, b) => a.compareTo(b));
+    if (_showFallback) {
+      return Scaffold(
+        appBar: AppBar(title: Text('Exámenes de ${widget.hijoNombre}')),
+        body: const FallbackHijosWidget(),
+      );
+    }
+    // fechasFiltradas not used in UI — skip computing it to avoid unused_local_variable
 
     return Scaffold(
       appBar: AppBar(title: Text('Exámenes de ${widget.hijoNombre}')),
@@ -87,14 +108,19 @@ class _ExamenesScreenState extends State<ExamenesScreen> {
                 DropdownButtonFormField<String>(
                   value: filtroAsignatura,
                   items: [
-                    DropdownMenuItem(value: null, child: Text('Todas las asignaturas')),
-                    ...['Matemáticas', 'Lengua', 'Inglés', 'Ciencias']
-                        .map((asignatura) => DropdownMenuItem(
-                          value: asignatura,
-                          child: Text(asignatura),
-                        )),
+                    DropdownMenuItem(
+                      value: null,
+                      child: Text('Todas las asignaturas'),
+                    ),
+                    ...['Matemáticas', 'Lengua', 'Inglés', 'Ciencias'].map(
+                      (asignatura) => DropdownMenuItem(
+                        value: asignatura,
+                        child: Text(asignatura),
+                      ),
+                    ),
                   ],
-                  onChanged: (nuevo) => setState(() => filtroAsignatura = nuevo),
+                  onChanged: (nuevo) =>
+                      setState(() => filtroAsignatura = nuevo),
                   decoration: InputDecoration(
                     labelText: 'Filtrar por asignatura',
                     border: OutlineInputBorder(),
@@ -104,11 +130,14 @@ class _ExamenesScreenState extends State<ExamenesScreen> {
                 DropdownButtonFormField<String>(
                   value: filtroTipo,
                   items: [
-                    DropdownMenuItem(value: null, child: Text('Todos los tipos')),
-                    ...['Oral', 'Escrito'].map((tipo) => DropdownMenuItem(
-                      value: tipo,
-                      child: Text(tipo),
-                    )),
+                    DropdownMenuItem(
+                      value: null,
+                      child: Text('Todos los tipos'),
+                    ),
+                    ...['Oral', 'Escrito'].map(
+                      (tipo) =>
+                          DropdownMenuItem(value: tipo, child: Text(tipo)),
+                    ),
                   ],
                   onChanged: (nuevo) => setState(() => filtroTipo = nuevo),
                   decoration: InputDecoration(
@@ -127,9 +156,18 @@ class _ExamenesScreenState extends State<ExamenesScreen> {
             selectedDayPredicate: (day) => isSameDay(selectedDay, day),
             eventLoader: examenesDelDia,
             calendarStyle: CalendarStyle(
-              todayDecoration: BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
-              selectedDecoration: BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
-              markerDecoration: BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+              todayDecoration: BoxDecoration(
+                color: Colors.orange,
+                shape: BoxShape.circle,
+              ),
+              selectedDecoration: BoxDecoration(
+                color: Colors.blue,
+                shape: BoxShape.circle,
+              ),
+              markerDecoration: BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
             ),
             onDaySelected: (selected, focused) {
               setState(() {
@@ -144,8 +182,11 @@ class _ExamenesScreenState extends State<ExamenesScreen> {
             icon: Icon(Icons.add),
             label: Text('Añadir examen'),
             onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final localContext = context;
+
               final nuevoExamen = await showDialog<Examen>(
-                context: context,
+                context: localContext,
                 builder: (_) => FormularioExamen(
                   hijoId: widget.hijoId,
                   hijoNombre: widget.hijoNombre,
@@ -153,7 +194,8 @@ class _ExamenesScreenState extends State<ExamenesScreen> {
               );
               if (nuevoExamen != null) {
                 cargarExamenes();
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (!mounted) return;
+                messenger.showSnackBar(
                   SnackBar(content: Text('✅ Examen añadido')),
                 );
               }
@@ -172,7 +214,9 @@ class _ExamenesScreenState extends State<ExamenesScreen> {
       builder: (_) => ListView(
         padding: EdgeInsets.all(16),
         children: examenes.map((examen) {
-          final fechaTexto = DateFormat('dd/MM/yyyy – HH:mm').format(examen.fecha);
+          final fechaTexto = DateFormat(
+            'dd/MM/yyyy – HH:mm',
+          ).format(examen.fecha);
           return Card(
             margin: EdgeInsets.symmetric(vertical: 8),
             child: ListTile(

@@ -125,8 +125,11 @@ class _SaludUploadScreenState extends State<SaludUploadScreen> {
 
   Future<void> subirDocumento() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null || archivoSeleccionado == null || tipoDocumento == null)
+    if (user == null || archivoSeleccionado == null || tipoDocumento == null) {
       return;
+    }
+
+    final navigator = Navigator.of(context);
 
     final nombreOriginal = archivoSeleccionado!.path.split('/').last;
     final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -154,9 +157,13 @@ class _SaludUploadScreenState extends State<SaludUploadScreen> {
       'hijoID': widget.hijoId,
     });
 
-    setState(() => mensajeDocumento = '✅ Documento subido correctamente');
+    if (mounted) {
+      setState(() => mensajeDocumento = '✅ Documento subido correctamente');
+    }
     Future.delayed(const Duration(milliseconds: 800), () {
-      Navigator.pop(context);
+      if (mounted) {
+        navigator.pop();
+      }
     });
   }
 

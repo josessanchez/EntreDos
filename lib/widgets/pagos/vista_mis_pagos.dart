@@ -4,6 +4,8 @@ import 'package:entredos/widgets/pagos/formulario_pago.dart';
 import 'package:entredos/widgets/pagos/tarjeta_pago.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:entredos/widgets/fallback_body.dart';
+import 'package:entredos/utils/app_logger.dart';
 
 class VistaMisPagos extends StatefulWidget {
   final String hijoID;
@@ -53,10 +55,14 @@ class _VistaMisPagosState extends State<VistaMisPagos> {
           }
 
           if (snapshot.hasError) {
-            return const Center(
+            final err = snapshot.error;
+            if (err is FirebaseException && err.code == 'permission-denied') {
+              return const FallbackHijosWidget();
+            }
+            return Center(
               child: Text(
-                '❌ Error al cargar tus pagos',
-                style: TextStyle(
+                '❌ Error al cargar tus pagos: ${snapshot.error}',
+                style: const TextStyle(
                   color: Colors.redAccent,
                   fontFamily: 'Montserrat',
                 ),
@@ -92,6 +98,7 @@ class _VistaMisPagosState extends State<VistaMisPagos> {
               builder: (_) => FormularioPago(hijoID: widget.hijoID),
             ),
           );
+          if (!mounted) return;
           setState(() {
             pagosFuturos = cargarMisPagos();
           });
@@ -103,7 +110,7 @@ class _VistaMisPagosState extends State<VistaMisPagos> {
   Future<List<ModeloPago>> cargarMisPagos() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      print('❌ Usuario no autenticado');
+      appLogger.w('❌ Usuario no autenticado');
       return [];
     }
 
@@ -114,14 +121,14 @@ class _VistaMisPagosState extends State<VistaMisPagos> {
           .where('responsableID', isEqualTo: user.uid)
           .get();
 
-      print('📦 Pagos encontrados: ${snapshot.docs.length}');
+      appLogger.i('📦 Pagos encontrados: ${snapshot.docs.length}');
       for (var doc in snapshot.docs) {
-        print('🧾 Pago: ${doc.data()}');
+        appLogger.d('🧾 Pago: ${doc.data()}');
       }
 
       return snapshot.docs.map((doc) => ModeloPago.fromFirestore(doc)).toList();
-    } catch (e) {
-      print('❌ Error al cargar pagos: $e');
+    } catch (e, st) {
+      appLogger.e('❌ Error al cargar pagos: $e', e, st);
       return [];
     }
   }

@@ -101,6 +101,8 @@ class _EditarConfigPagosState extends State<EditarConfigPagos> {
   }
 
   Future<void> guardarConfig() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
     final data = ModeloConfiguracion(
       tipoCustodia: tipoCustodia,
       divisionFlexible: divisionFlexible,
@@ -124,10 +126,11 @@ class _EditarConfigPagosState extends State<EditarConfigPagos> {
         .doc('pagos')
         .set(data.toMap());
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('✅ Configuración guardada')));
-    Navigator.pop(context);
+    if (!mounted) return;
+    messenger.showSnackBar(
+      const SnackBar(content: Text('✅ Configuración guardada')),
+    );
+    navigator.pop();
   }
 
   @override

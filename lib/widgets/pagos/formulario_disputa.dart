@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:entredos/models/modelo_disputa.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:entredos/utils/app_logger.dart';
 
 class FormularioDisputa extends StatefulWidget {
   final String hijoID;
@@ -82,6 +83,9 @@ class _FormularioDisputaState extends State<FormularioDisputa> {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       setState(() => errorRegistro = true);
@@ -102,13 +106,13 @@ class _FormularioDisputaState extends State<FormularioDisputa> {
       );
 
       await ref.set(nuevaDisputa.toMap());
-
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (!mounted) return;
+      messenger.showSnackBar(
         const SnackBar(content: Text('✅ Disputa registrada correctamente')),
       );
-      Navigator.pop(context);
-    } catch (e) {
-      print('❌ Error al guardar disputa: $e');
+      navigator.pop();
+    } catch (e, st) {
+      appLogger.e('❌ Error al guardar disputa: $e', e, st);
       setState(() => errorRegistro = true);
     }
   }

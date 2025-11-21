@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:entredos/utils/app_logger.dart';
 
 class FirestoreTestScreen extends StatefulWidget {
+  const FirestoreTestScreen({super.key});
+
   @override
   _FirestoreTestScreenState createState() => _FirestoreTestScreenState();
 }
@@ -16,17 +19,18 @@ class _FirestoreTestScreenState extends State<FirestoreTestScreen> {
         'fecha': Timestamp.now(),
       });
 
-      final snapshot =
-          await FirebaseFirestore.instance.collection("prueba").get();
+      final snapshot = await FirebaseFirestore.instance
+          .collection("prueba")
+          .get();
 
-      print("📦 Documentos encontrados: ${snapshot.docs.length}");
+      appLogger.i("📦 Documentos encontrados: ${snapshot.docs.length}");
 
       setState(() {
         resultado =
             '✅ Conexión correcta.\nTotal documentos: ${snapshot.docs.length}\nÚltimo: ${snapshot.docs.last['mensaje']}';
       });
-    } catch (e) {
-      print("❌ Error al acceder a Firestore: $e");
+    } catch (e, st) {
+      appLogger.e("❌ Error al acceder a Firestore: $e", e, st);
       setState(() {
         resultado = '❌ Error al acceder a Firestore: $e';
       });

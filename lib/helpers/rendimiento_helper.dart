@@ -11,7 +11,6 @@ class RendimientoHelper {
     required VoidCallback onGuardado,
   }) async {
     final observacionesController = TextEditingController();
-    final asignaturaController = TextEditingController();
     String tipoSeleccionado = 'Boletín de notas (trimestre)';
     String trimestreSeleccionado = '1º Trimestre';
     FilePickerResult? archivoSeleccionado;
@@ -168,9 +167,10 @@ class RendimientoHelper {
             ElevatedButton(
               child: const Text('Guardar'),
               onPressed: () async {
+                final navigator = Navigator.of(context);
+                final messenger = ScaffoldMessenger.of(context);
                 final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
                 final observaciones = observacionesController.text.trim();
-                final asignatura = asignaturaController.text.trim();
                 final fecha = DateTime.now().toIso8601String();
                 String? urlArchivo;
                 String? nombreArchivo;
@@ -223,7 +223,7 @@ class RendimientoHelper {
                       .toList();
 
                   if (trimestresExistentes.contains(trimestreSeleccionado)) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       const SnackBar(
                         content: Text(
                           'Ya existe un boletín para ese trimestre.',
@@ -236,7 +236,7 @@ class RendimientoHelper {
 
                   if (trimestreSeleccionado == '2º Trimestre' &&
                       !trimestresExistentes.contains('1º Trimestre')) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       const SnackBar(
                         content: Text(
                           'Debes añadir primero el boletín del 1º Trimestre.',
@@ -249,7 +249,7 @@ class RendimientoHelper {
 
                   if (trimestreSeleccionado == '3º Trimestre' &&
                       !trimestresExistentes.contains('2º Trimestre')) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       const SnackBar(
                         content: Text(
                           'Debes añadir primero el boletín del 2º Trimestre.',
@@ -265,7 +265,7 @@ class RendimientoHelper {
                     .collection('rendimiento')
                     .add(datos);
 
-                Navigator.pop(context);
+                navigator.pop();
                 onGuardado();
               },
             ),
@@ -283,12 +283,7 @@ class RendimientoHelper {
     final observacionesController = TextEditingController(
       text: doc['observaciones'] ?? '',
     );
-    final asignaturaController = TextEditingController(
-      text: doc['asignatura'] ?? '',
-    );
-    final notaController = TextEditingController(
-      text: doc['nota']?.toString() ?? '',
-    );
+
     String tipoSeleccionado = doc['tipo'] ?? 'Boletín de notas (trimestre)';
     String trimestreSeleccionado = doc['trimestre'] ?? '1º Trimestre';
     final List<Map<String, TextEditingController>> notasBoletin = [];
@@ -427,9 +422,8 @@ class RendimientoHelper {
             ElevatedButton(
               child: const Text('Guardar cambios'),
               onPressed: () async {
+                final navigator = Navigator.of(context);
                 final observaciones = observacionesController.text.trim();
-                final asignatura = asignaturaController.text.trim();
-                final nota = notaController.text.trim();
                 final fecha = DateTime.now().toIso8601String();
 
                 final Map<String, dynamic> datos = {
@@ -460,7 +454,7 @@ class RendimientoHelper {
                     .doc(doc['id'])
                     .update(datos);
 
-                Navigator.pop(context);
+                navigator.pop();
                 onGuardado();
               },
             ),

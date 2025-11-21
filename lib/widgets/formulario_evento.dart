@@ -15,6 +15,7 @@ class FormularioEvento extends StatefulWidget {
   final String coleccion; // destino donde se guarda el evento
 
   const FormularioEvento({
+    super.key,
     required this.hijoId,
     required this.hijoNombre,
     this.eventoExistente,
@@ -51,6 +52,7 @@ class _FormularioEventoState extends State<FormularioEvento> {
   }
 
   Future<void> seleccionarDocumento() async {
+    final messenger = ScaffoldMessenger.of(context);
     final resultado = await FilePicker.platform.pickFiles();
     if (resultado == null || resultado.files.single.path == null) return;
 
@@ -64,7 +66,7 @@ class _FormularioEventoState extends State<FormularioEvento> {
     final tamano = archivo.lengthSync();
 
     if (tamano > 5 * 1024 * 1024) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(
             '❌ El archivo supera 5MB',
@@ -99,6 +101,8 @@ class _FormularioEventoState extends State<FormularioEvento> {
     if (titulo.isEmpty || fechaEvento == null || guardando) return;
 
     setState(() => guardando = true);
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
 
     String? documentoUrl = documentoActualUrl;
     if (documento != null && documentoNombre != null) {
@@ -166,17 +170,17 @@ class _FormularioEventoState extends State<FormularioEvento> {
           .doc(widget.eventoExistente!.id)
           .update(eventoFinal.toMap());
 
-      Navigator.pop(context, eventoFinal);
+      navigator.pop(eventoFinal);
     } else {
       final docRef = await FirebaseFirestore.instance
           .collection(widget.coleccion)
           .add(eventoFinal.toMap());
 
       final eventoConId = eventoFinal.copyWith(id: docRef.id);
-      Navigator.pop(context, eventoConId);
+      navigator.pop(eventoConId);
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
       SnackBar(
         content: Text(
           '✅ Evento guardado',
@@ -257,11 +261,11 @@ class _FormularioEventoState extends State<FormularioEvento> {
                   fontFamily: 'Montserrat',
                 ),
                 menuStyle: MenuStyle(
-                  backgroundColor: MaterialStateProperty.all(
+                  backgroundColor: WidgetStateProperty.all(
                     const Color(0xFF1B263B),
                   ),
-                  fixedSize: MaterialStateProperty.all(Size(anchoMenu, 160)),
-                  padding: MaterialStateProperty.all(
+                  fixedSize: WidgetStateProperty.all(Size(anchoMenu, 160)),
+                  padding: WidgetStateProperty.all(
                     const EdgeInsets.symmetric(vertical: 4),
                   ),
                 ),
@@ -301,7 +305,6 @@ class _FormularioEventoState extends State<FormularioEvento> {
                     builder: (context, child) {
                       return Theme(
                         data: ThemeData.dark().copyWith(
-                          dialogBackgroundColor: const Color(0xFF1B263B),
                           colorScheme: const ColorScheme.dark(
                             primary: Colors.blueAccent,
                             onPrimary: Colors.white,
@@ -312,6 +315,9 @@ class _FormularioEventoState extends State<FormularioEvento> {
                             style: TextButton.styleFrom(
                               foregroundColor: Colors.blueAccent,
                             ),
+                          ),
+                          dialogTheme: DialogThemeData(
+                            backgroundColor: const Color(0xFF1B263B),
                           ),
                         ),
                         child: child!,
@@ -385,6 +391,15 @@ class _FormularioEventoState extends State<FormularioEvento> {
           onPressed: () => Navigator.pop(context),
         ),
         ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.green,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onPressed: guardando ? null : guardarEvento,
           child: guardando
               ? const SizedBox(
                   width: 20,
@@ -400,15 +415,6 @@ class _FormularioEventoState extends State<FormularioEvento> {
                       : 'Guardar cambios',
                   style: const TextStyle(fontFamily: 'Montserrat'),
                 ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          onPressed: guardando ? null : guardarEvento,
         ),
       ],
     );

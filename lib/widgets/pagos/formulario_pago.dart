@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:entredos/utils/app_logger.dart';
 
 class FormularioPago extends StatefulWidget {
   final String hijoID;
@@ -222,10 +223,13 @@ class _FormularioPagoState extends State<FormularioPago> {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
     // Validación de campos obligatorios
     if (tipoGasto == null || importeTotal == null) {
-      print('❌ tipoGasto o importeTotal son null');
-      ScaffoldMessenger.of(context).showSnackBar(
+      appLogger.w('❌ tipoGasto o importeTotal son null');
+      messenger.showSnackBar(
         const SnackBar(
           content: Text('⚠️ Completa todos los campos obligatorios'),
         ),
@@ -242,10 +246,10 @@ class _FormularioPagoState extends State<FormularioPago> {
     final nombre = FirebaseAuth.instance.currentUser?.displayName ?? 'Tú';
 
     if (uid == null) {
-      print('❌ Usuario no autenticado');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('❌ Usuario no autenticado')));
+      appLogger.w('❌ Usuario no autenticado');
+      messenger.showSnackBar(
+        const SnackBar(content: Text('❌ Usuario no autenticado')),
+      );
       return;
     }
 
@@ -267,9 +271,9 @@ class _FormularioPagoState extends State<FormularioPago> {
         setState(() => errorDuplicado = true);
         return;
       }
-    } catch (e) {
-      print('❌ Error al verificar duplicado: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
+    } catch (e, st) {
+      appLogger.e('❌ Error al verificar duplicado: $e', e, st);
+      messenger.showSnackBar(
         SnackBar(content: Text('❌ Error al verificar duplicado: $e')),
       );
       return;
@@ -282,13 +286,13 @@ class _FormularioPagoState extends State<FormularioPago> {
           'justificantes/${DateTime.now().millisecondsSinceEpoch}_${justificante!.path.split('/').last}',
         );
         final uploadTask = await ref.putFile(justificante!);
-        print('📤 Justificante subido: ${uploadTask.state}');
+        appLogger.i('📤 Justificante subido: ${uploadTask.state}');
         urlJustificante = await ref.getDownloadURL();
-        print('🔗 URL del justificante: $urlJustificante');
+        appLogger.i('🔗 URL del justificante: $urlJustificante');
       } catch (e) {
-        print('❌ Error al subir justificante: $e');
+        appLogger.e('❌ Error al subir justificante: $e', e);
         setState(() => errorJustificante = true);
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text('❌ Error al subir justificante: $e')),
         );
         return;
@@ -318,16 +322,17 @@ class _FormularioPagoState extends State<FormularioPago> {
 
       await ref.set(nuevoPago.toMap());
 
-      print('✅ Pago guardado con ID: ${ref.id}');
-      ScaffoldMessenger.of(context).showSnackBar(
+      appLogger.i('✅ Pago guardado con ID: ${ref.id}');
+      if (!mounted) return;
+      messenger.showSnackBar(
         const SnackBar(content: Text('✅ Pago registrado correctamente')),
       );
-      Navigator.pop(context);
+      navigator.pop();
     } catch (e) {
-      print('❌ Error al guardar el pago: $e');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('❌ Error al guardar el pago: $e')));
+      appLogger.e('❌ Error al guardar el pago: $e', e);
+      messenger.showSnackBar(
+        SnackBar(content: Text('❌ Error al guardar el pago: $e')),
+      );
     }
   }
 

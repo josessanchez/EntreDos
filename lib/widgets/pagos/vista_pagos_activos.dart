@@ -3,6 +3,8 @@ import 'package:entredos/models/modelo_pago.dart';
 import 'package:entredos/widgets/pagos/formulario_pago.dart';
 import 'package:entredos/widgets/pagos/tarjeta_pago.dart';
 import 'package:flutter/material.dart';
+import 'package:entredos/widgets/fallback_body.dart';
+import 'package:entredos/utils/app_logger.dart';
 
 class VistaPagosActivos extends StatefulWidget {
   final String hijoID;
@@ -40,10 +42,14 @@ class _VistaPagosActivosState extends State<VistaPagosActivos> {
           }
 
           if (snapshot.hasError) {
-            return const Center(
+            final err = snapshot.error;
+            if (err is FirebaseException && err.code == 'permission-denied') {
+              return const FallbackHijosWidget();
+            }
+            return Center(
               child: Text(
-                '❌ Error al cargar los pagos',
-                style: TextStyle(
+                '❌ Error al cargar los pagos: ${snapshot.error}',
+                style: const TextStyle(
                   color: Colors.redAccent,
                   fontFamily: 'Montserrat',
                 ),
@@ -79,6 +85,7 @@ class _VistaPagosActivosState extends State<VistaPagosActivos> {
               builder: (_) => FormularioPago(hijoID: widget.hijoID),
             ),
           );
+          if (!mounted) return;
           setState(() {
             pagosFuturos = cargarPagos();
           });
@@ -94,14 +101,14 @@ class _VistaPagosActivosState extends State<VistaPagosActivos> {
           .where('hijoID', isEqualTo: widget.hijoID)
           .get();
 
-      print('📦 Pagos encontrados: ${snapshot.docs.length}');
+      appLogger.i('📦 Pagos encontrados: ${snapshot.docs.length}');
       for (var doc in snapshot.docs) {
-        print('🧾 Pago: ${doc.data()}');
+        appLogger.d('🧾 Pago: ${doc.data()}');
       }
 
       return snapshot.docs.map((doc) => ModeloPago.fromFirestore(doc)).toList();
-    } catch (e) {
-      print('❌ Error al cargar pagos: $e');
+    } catch (e, st) {
+      appLogger.e('❌ Error al cargar pagos: $e', e, st);
       return [];
     }
   }
